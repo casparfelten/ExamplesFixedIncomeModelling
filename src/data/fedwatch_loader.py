@@ -10,6 +10,32 @@ from src.utils.logging_utils import get_logger
 logger = get_logger(__name__)
 
 
+def check_fedwatch_files_exist(expected_files: Optional[List[str]] = None) -> Tuple[bool, List[str], List[str]]:
+    """
+    Check if expected FedWatch files exist in the raw data directory.
+    
+    Args:
+        expected_files: Optional list of expected filenames (e.g., ['fedwatch_meeting_20240320.xlsx']).
+                      If None, just checks if any files exist.
+    
+    Returns:
+        Tuple of (all_exist, existing_files, missing_files)
+    """
+    raw_dir = get_raw_data_path("fedwatch")
+    all_files = list(raw_dir.glob("*.xlsx")) + list(raw_dir.glob("*.xls"))
+    existing_filenames = [f.name for f in all_files]
+    
+    if expected_files is None:
+        # Just check if any files exist
+        return (len(all_files) > 0, existing_filenames, [])
+    
+    # Check specific files
+    missing = [f for f in expected_files if f not in existing_filenames]
+    existing = [f for f in expected_files if f in existing_filenames]
+    
+    return (len(missing) == 0, existing, missing)
+
+
 def scan_fedwatch_files() -> List[Path]:
     """
     Scan for all FedWatch Excel files in the raw data directory.

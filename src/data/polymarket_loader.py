@@ -13,9 +13,25 @@ from src.utils.logging_utils import get_logger
 logger = get_logger(__name__)
 
 
+def check_market_exists(market_id: str) -> bool:
+    """
+    Check if Polymarket data file exists for a given market ID.
+    
+    Args:
+        market_id: Polymarket market ID
+    
+    Returns:
+        True if file exists, False otherwise
+    """
+    raw_dir = get_raw_data_path("polymarket")
+    json_path = raw_dir / f"{market_id}.json"
+    return json_path.exists()
+
+
 def fetch_market_history(
     market_id: str,
-    save_path: Optional[Path] = None
+    save_path: Optional[Path] = None,
+    force_reload: bool = False
 ) -> Path:
     """
     Fetch historical data for a Polymarket binary contract.
@@ -26,10 +42,20 @@ def fetch_market_history(
     Args:
         market_id: Polymarket market ID or slug
         save_path: Path to save the data (if None, uses default location)
+        force_reload: If True, re-fetch even if file already exists
     
     Returns:
         Path to saved data file
     """
+    # Check if data already exists
+    if save_path is None:
+        raw_dir = get_raw_data_path("polymarket")
+        save_path = raw_dir / f"{market_id}.json"
+    
+    if not force_reload and save_path.exists():
+        logger.info(f"Polymarket data for {market_id} already exists at {save_path}. Skipping fetch (use force_reload=True to override).")
+        return save_path
+    
     logger.info(f"Fetching Polymarket data for market: {market_id}")
     
     # Polymarket API endpoints (these may need to be updated based on actual API)

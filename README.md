@@ -124,9 +124,29 @@ Polymarket data is fetched via their public API. The loader supports fetching hi
 
 ## Usage
 
-### Download Data
+### Data Fetching Workflow
 
-Download all FRED series:
+**Important:** All bulk data fetching should be done through the datagetter notebook (`notebooks/01_datagetter.ipynb`). This notebook includes smart caching that checks date ranges and avoids unnecessary re-fetching.
+
+1. **Run the datagetter notebook first:**
+   ```bash
+   jupyter lab notebooks/01_datagetter.ipynb
+   ```
+   
+   The notebook will:
+   - Check if FRED data exists and covers the required date range
+   - Download missing or outdated FRED series automatically
+   - Check for FedWatch Excel files (manually downloaded)
+   - Fetch Polymarket data for configured markets
+   - Skip data that already exists (unless `FORCE_RELOAD=True`)
+
+2. **Use other notebooks for analysis:**
+   - Other notebooks should only READ already-fetched data
+   - They will not trigger downloads automatically
+
+### Download Data (Alternative Methods)
+
+For programmatic access, you can also download FRED data:
 
 ```bash
 make download-data
@@ -136,6 +156,8 @@ Or manually:
 ```bash
 python -c "from src.data.fred_loader import load_all_fred_data; from src.config import FRED_SERIES; import os; from dotenv import load_dotenv; load_dotenv(); api_key = os.getenv('FRED_API_KEY'); load_all_fred_data(FRED_SERIES, api_key)"
 ```
+
+**Note:** The datagetter notebook is the recommended approach as it includes date range checking and avoids unnecessary downloads.
 
 ### Using the Data Loaders
 
@@ -195,7 +217,29 @@ panel = build_fed_panel(
 
 ### Notebooks
 
-Run the data overview notebook:
+#### 01_datagetter.ipynb - Data Fetching
+
+**Run this notebook first** to fetch all required data:
+
+```bash
+jupyter lab notebooks/01_datagetter.ipynb
+```
+
+This notebook handles all bulk data fetching with smart caching:
+- Checks date ranges to avoid unnecessary downloads
+- Respects `FORCE_RELOAD` flag for complete refresh
+- Configurable date ranges and market lists
+- Summary of what was downloaded vs skipped
+
+**Configuration:** Edit the configuration section at the top of the notebook to:
+- Set `FORCE_RELOAD = True` to force re-download everything
+- Configure FRED date ranges (`FRED_START_DATE`, `FRED_END_DATE`)
+- Add Polymarket market IDs to `POLYMARKET_MARKETS`
+- Specify expected FedWatch filenames (optional)
+
+#### 00_data_overview.ipynb - Data Exploration
+
+Run the data overview notebook for analysis:
 
 ```bash
 jupyter lab notebooks/00_data_overview.ipynb
@@ -213,6 +257,8 @@ The notebook includes:
   - 2Y yield over time
   - FedWatch probability over time
   - 2Y yield vs FedWatch probability (scatter)
+
+**Note:** This notebook only reads data - it does not fetch data. Run `01_datagetter.ipynb` first.
 
 ## Makefile Commands
 

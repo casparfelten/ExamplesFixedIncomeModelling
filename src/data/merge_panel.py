@@ -21,6 +21,9 @@ def build_fed_panel(
     
     Merges FRED data (yields, macro variables) with FedWatch probability data.
     
+    This function is for READING existing data only. For downloading data,
+    use the datagetter notebook (01_datagetter.ipynb).
+    
     Args:
         start_date: Start date for the panel (if None, uses earliest available)
         end_date: End date for the panel (if None, uses latest available)
@@ -41,9 +44,9 @@ def build_fed_panel(
     """
     logger.info("Building Fed panel...")
     
-    # Load FRED panel
+    # Load FRED panel (auto_download=False by default, so only reads existing data)
     logger.info("Loading FRED data...")
-    fred_panel = merge_fred_panel()
+    fred_panel = merge_fred_panel(auto_download=False)
     
     # Load FedWatch probability series
     logger.info("Loading FedWatch probability data...")

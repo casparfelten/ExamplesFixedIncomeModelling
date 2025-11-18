@@ -2,10 +2,11 @@
 
 import os
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Tuple
 import pandas as pd
 from fredapi import Fred
 from dotenv import load_dotenv
+from datetime import datetime, timedelta
 
 from src.config import FRED_SERIES, FRED_COLUMN_MAPPING
 from src.utils.paths import get_raw_data_path, ensure_dir_exists
@@ -17,13 +18,92 @@ logger = get_logger(__name__)
 load_dotenv()
 
 
-def download_series(series_id: str, api_key: Optional[str] = None) -> Path:
+def get_series_date_range(series_id: str) -> Optional[Tuple[pd.Timestamp, pd.Timestamp]]:
+    """
+    Get the date range (min, max) from an existing FRED series CSV.
+    
+    Args:
+        series_id: FRED series ID
+    
+    Returns:
+        Tuple of (min_date, max_date) if file exists, None otherwise
+    """
+    raw_dir = get_raw_data_path("fred")
+    filepath = raw_dir / f"{series_id}.csv"
+    
+    if not filepath.exists():
+        return None
+    
+    try:
+        df = pd.read_csv(filepath, parse_dates=["date"])
+        if df.empty:
+            return None
+        min_date = df["date"].min()
+        max_date = df["date"].max()
+        return (min_date, max_date)
+    except Exception as e:
+        logger.warning(f"Failed to read date range from {filepath}: {e}")
+        return None
+
+
+def check_data_coverage(
+    series_id: str, 
+    start_date: Optional[pd.Timestamp] = None, 
+    end_date: Optional[pd.Timestamp] = None,
+    recent_threshold_days: int = 7
+) -> Tuple[bool, Optional[str]]:
+    """
+    Check if existing FRED series data covers the requested date range.
+    
+    Args:
+        series_id: FRED series ID
+        start_date: Required start date (None = no requirement)
+        end_date: Required end date (None = check if recent, within threshold_days of today)
+        recent_threshold_days: If end_date is None, check if max date is within this many days of today
+    
+    Returns:
+        Tuple of (is_covered, reason). is_covered=True if data exists and covers the range.
+    """
+    date_range = get_series_date_range(series_id)
+    
+    if date_range is None:
+        return (False, "File does not exist")
+    
+    min_date, max_date = date_range
+    
+    # Check start date requirement
+    if start_date is not None:
+        if min_date > start_date:
+            return (False, f"Data starts at {min_date.date()}, but {start_date.date()} is required")
+    
+    # Check end date requirement
+    if end_date is not None:
+        if max_date < end_date:
+            return (False, f"Data ends at {max_date.date()}, but {end_date.date()} is required")
+    else:
+        # Check if data is recent enough (within threshold of today)
+        today = pd.Timestamp.now().normalize()
+        days_old = (today - max_date).days
+        if days_old > recent_threshold_days:
+            return (False, f"Data is {days_old} days old (max date: {max_date.date()}), threshold: {recent_threshold_days} days")
+    
+    return (True, f"Data covers range: {min_date.date()} to {max_date.date()}")
+
+
+def download_series(
+    series_id: str, 
+    api_key: Optional[str] = None,
+    start_date: Optional[pd.Timestamp] = None,
+    end_date: Optional[pd.Timestamp] = None
+) -> Path:
     """
     Download a FRED series and save to CSV.
     
     Args:
         series_id: FRED series ID (e.g., 'DGS2')
         api_key: FRED API key (if None, reads from environment)
+        start_date: Optional start date for data (None = all available)
+        end_date: Optional end date for data (None = today)
     
     Returns:
         Path to saved CSV file
@@ -33,14 +113,26 @@ def download_series(series_id: str, api_key: Optional[str] = None) -> Path:
         if not api_key:
             raise ValueError("FRED_API_KEY not found in environment. Set it in .env file or pass as argument.")
     
-    logger.info(f"Downloading FRED series: {series_id}")
+    date_range_str = ""
+    if start_date is not None or end_date is not None:
+        start_str = start_date.strftime("%Y-%m-%d") if start_date else "earliest"
+        end_str = end_date.strftime("%Y-%m-%d") if end_date else "today"
+        date_range_str = f" ({start_str} to {end_str})"
+    
+    logger.info(f"Downloading FRED series: {series_id}{date_range_str}")
     
     # Initialize FRED client
     fred = Fred(api_key=api_key)
     
-    # Download data
+    # Download data with optional date range
     try:
-        df = fred.get_series(series_id)
+        if start_date is not None or end_date is not None:
+            # Convert to datetime for fredapi
+            start_dt = start_date.to_pydatetime() if start_date else None
+            end_dt = end_date.to_pydatetime() if end_date else None
+            df = fred.get_series(series_id, start=start_dt, end=end_dt)
+        else:
+            df = fred.get_series(series_id)
     except Exception as e:
         logger.error(f"Failed to download {series_id}: {e}")
         raise
@@ -127,14 +219,17 @@ def load_all_fred_data(series_list: List[str], api_key: Optional[str] = None, sk
     logger.info(f"FRED data download complete. Downloaded: {downloaded_count}, Skipped: {skipped_count}")
 
 
-def merge_fred_panel(series_list: Optional[List[str]] = None, api_key: Optional[str] = None, auto_download: bool = True) -> pd.DataFrame:
+def merge_fred_panel(series_list: Optional[List[str]] = None, api_key: Optional[str] = None, auto_download: bool = False) -> pd.DataFrame:
     """
     Merge all FRED series into a single daily panel.
     
+    This function is for READING existing data only. For downloading data,
+    use the datagetter notebook (01_datagetter.ipynb) or download_series() directly.
+    
     Args:
         series_list: List of series IDs to merge (default: all from config)
-        api_key: FRED API key (if None, reads from environment)
-        auto_download: If True, automatically download missing series
+        api_key: FRED API key (if None, reads from environment) - only used if auto_download=True
+        auto_download: If True, automatically download missing series (default: False)
     
     Returns:
         Daily DataFrame with standardized column names
