@@ -1,14 +1,20 @@
 """Polymarket data fetching and loading utilities"""
 
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Dict
 import json
 import pandas as pd
 import requests
 from datetime import datetime
+import os
+from dotenv import load_dotenv
 
-from src.utils.paths import get_raw_data_path, ensure_dir_exists
+from src.config import POLYMARKET_API_BASE_URL, POLYMARKET_EVENT_MAPPING
+from src.utils.paths import get_raw_data_path, get_processed_data_path, ensure_dir_exists
 from src.utils.logging_utils import get_logger
+
+# Load environment variables
+load_dotenv()
 
 logger = get_logger(__name__)
 
@@ -63,7 +69,7 @@ def fetch_market_history(
     # - GraphQL: https://clob.polymarket.com/graphql
     # - REST: https://clob.polymarket.com/markets/{market_id}
     
-    base_url = "https://clob.polymarket.com"
+    base_url = os.getenv("POLYMARKET_API_BASE_URL", POLYMARKET_API_BASE_URL)
     
     # Try GraphQL endpoint first
     graphql_url = f"{base_url}/graphql"
@@ -232,4 +238,102 @@ def load_polymarket_data(market_id: str) -> pd.DataFrame:
     
     logger.info(f"Loaded {len(df)} Polymarket data points for {market_id}")
     return df
+
+
+def resample_to_daily(market_id: str, method: str = "close") -> pd.DataFrame:
+    """
+    Resample Polymarket data to daily frequency.
+    
+    Args:
+        market_id: Polymarket market ID
+        method: Resampling method - "close" (last price of day) or "vwap" (volume-weighted average)
+    
+    Returns:
+        DataFrame with columns: date, price, volume (optional), liquidity (optional)
+        Saves to data/processed/polymarket_{market_id}_daily.parquet
+    """
+    # Load raw data
+    df = load_polymarket_data(market_id)
+    
+    if df.empty:
+        logger.warning(f"No data available for {market_id}")
+        return pd.DataFrame(columns=['date', 'price', 'volume', 'liquidity'])
+    
+    # Convert datetime to date (UTC)
+    df['date'] = df['datetime'].dt.date
+    
+    # Resample to daily
+    if method == "vwap" and 'volume' in df.columns and df['volume'].notna().any():
+        # Volume-weighted average price
+        df['price_volume'] = df['price'] * df['volume'].fillna(0)
+        daily = df.groupby('date').agg({
+            'price_volume': 'sum',
+            'volume': 'sum',
+            'liquidity': 'last'  # Use last liquidity of day
+        }).reset_index()
+        daily['price'] = daily['price_volume'] / daily['volume'].replace(0, 1)
+        daily = daily[['date', 'price', 'volume', 'liquidity']]
+    else:
+        # Close price (last price of day)
+        daily = df.groupby('date').agg({
+            'price': 'last',
+            'volume': 'sum' if 'volume' in df.columns else 'first',
+            'liquidity': 'last' if 'liquidity' in df.columns else 'first'
+        }).reset_index()
+    
+    # Convert date back to datetime
+    daily['date'] = pd.to_datetime(daily['date'])
+    
+    # Sort by date
+    daily = daily.sort_values('date').reset_index(drop=True)
+    
+    # Save processed daily data
+    processed_dir = get_processed_data_path()
+    ensure_dir_exists(processed_dir)
+    parquet_path = processed_dir / f"polymarket_{market_id}_daily.parquet"
+    daily.to_parquet(parquet_path, index=False)
+    logger.info(f"Saved daily resampled data to {parquet_path}")
+    logger.info(f"Daily data shape: {daily.shape}, date range: {daily['date'].min()} to {daily['date'].max()}")
+    
+    return daily
+
+
+def get_polymarket_market_id(event_id: str) -> Optional[Dict]:
+    """
+    Get Polymarket market ID and metadata for an internal event ID.
+    
+    Args:
+        event_id: Internal event identifier (e.g., "ceasefire_ukraine_by_2024Q4")
+    
+    Returns:
+        Dictionary with market_id, description, resolution_date, or None if not found
+    """
+    mapping = POLYMARKET_EVENT_MAPPING.get(event_id)
+    if mapping is None:
+        logger.warning(f"Event ID '{event_id}' not found in POLYMARKET_EVENT_MAPPING")
+        return None
+    
+    return mapping
+
+
+def load_polymarket_daily(market_id: str) -> pd.DataFrame:
+    """
+    Load daily resampled Polymarket data from parquet file.
+    
+    Args:
+        market_id: Polymarket market ID
+    
+    Returns:
+        DataFrame with daily data, or resamples if file doesn't exist
+    """
+    processed_dir = get_processed_data_path()
+    parquet_path = processed_dir / f"polymarket_{market_id}_daily.parquet"
+    
+    if parquet_path.exists():
+        df = pd.read_parquet(parquet_path)
+        logger.info(f"Loaded daily Polymarket data for {market_id}: {len(df)} rows")
+        return df
+    else:
+        logger.info(f"Daily data not found for {market_id}. Resampling from raw data...")
+        return resample_to_daily(market_id)
 

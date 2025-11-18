@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 from datetime import datetime, timedelta
 
 from src.config import FRED_SERIES, FRED_COLUMN_MAPPING
-from src.utils.paths import get_raw_data_path, ensure_dir_exists
+from src.utils.paths import get_raw_data_path, get_processed_data_path, ensure_dir_exists
 from src.utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
@@ -302,6 +302,13 @@ def merge_fred_panel(series_list: Optional[List[str]] = None, api_key: Optional[
     # Reset index to have 'date' column
     panel = panel.reset_index()
     panel.columns = ["date"] + list(panel.columns[1:])
+    
+    # Save processed panel to parquet
+    processed_dir = get_processed_data_path()
+    ensure_dir_exists(processed_dir)
+    parquet_path = processed_dir / "fred_daily_panel.parquet"
+    panel.to_parquet(parquet_path, index=False)
+    logger.info(f"Saved processed FRED panel to {parquet_path}")
     
     logger.info(f"Merged panel shape: {panel.shape}")
     return panel
