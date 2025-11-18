@@ -93,32 +93,48 @@ def load_series(series_id: str) -> pd.DataFrame:
     return df
 
 
-def load_all_fred_data(series_list: List[str], api_key: Optional[str] = None) -> None:
+def load_all_fred_data(series_list: List[str], api_key: Optional[str] = None, skip_existing: bool = True) -> None:
     """
     Download all specified FRED series.
     
     Args:
         series_list: List of FRED series IDs
         api_key: FRED API key (if None, reads from environment)
+        skip_existing: If True, skip series that already exist locally
     """
     logger.info(f"Downloading {len(series_list)} FRED series...")
     
+    raw_dir = get_raw_data_path("fred")
+    downloaded_count = 0
+    skipped_count = 0
+    
     for series_id in series_list:
+        # Check if file already exists
+        if skip_existing:
+            filepath = raw_dir / f"{series_id}.csv"
+            if filepath.exists():
+                logger.info(f"Skipping {series_id}: already exists at {filepath}")
+                skipped_count += 1
+                continue
+        
         try:
             download_series(series_id, api_key)
+            downloaded_count += 1
         except Exception as e:
             logger.error(f"Failed to download {series_id}: {e}")
             continue
     
-    logger.info("FRED data download complete.")
+    logger.info(f"FRED data download complete. Downloaded: {downloaded_count}, Skipped: {skipped_count}")
 
 
-def merge_fred_panel(series_list: Optional[List[str]] = None) -> pd.DataFrame:
+def merge_fred_panel(series_list: Optional[List[str]] = None, api_key: Optional[str] = None, auto_download: bool = True) -> pd.DataFrame:
     """
     Merge all FRED series into a single daily panel.
     
     Args:
         series_list: List of series IDs to merge (default: all from config)
+        api_key: FRED API key (if None, reads from environment)
+        auto_download: If True, automatically download missing series
     
     Returns:
         Daily DataFrame with standardized column names
@@ -128,10 +144,32 @@ def merge_fred_panel(series_list: Optional[List[str]] = None) -> pd.DataFrame:
     
     logger.info(f"Merging {len(series_list)} FRED series into daily panel...")
     
+    # Get API key if needed for auto-download
+    if auto_download and api_key is None:
+        api_key = os.getenv("FRED_API_KEY")
+    
     # Load all series
     dataframes = {}
     for series_id in series_list:
         try:
+            # Check if file exists, download if missing and auto_download is enabled
+            raw_dir = get_raw_data_path("fred")
+            filepath = raw_dir / f"{series_id}.csv"
+            
+            if not filepath.exists() and auto_download:
+                if not api_key:
+                    logger.warning(
+                        f"Series {series_id} not found and FRED_API_KEY not available. "
+                        f"Skipping {series_id}. Set FRED_API_KEY in .env file to enable auto-download."
+                    )
+                    continue
+                try:
+                    logger.info(f"Auto-downloading missing series: {series_id}")
+                    download_series(series_id, api_key)
+                except Exception as e:
+                    logger.error(f"Failed to auto-download {series_id}: {e}. Skipping.")
+                    continue
+            
             df = load_series(series_id)
             # Get standardized column name
             col_name = FRED_COLUMN_MAPPING.get(series_id, series_id.lower())

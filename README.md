@@ -1,312 +1,277 @@
-# Fixed Income Event Modelling - Data Setup
+# Fixed Income Event Modelling - Data Infrastructure
 
-This project provides a clean Python environment and data infrastructure for fixed-income event modelling. The focus is on **data preparation only** - no statistical models, regressions, or forecasting are implemented at this stage.
+A clean Python environment for downloading, cleaning, and aligning fixed-income data from multiple sources (FRED, CME FedWatch, Polymarket) to support event-modelling research.
+
+**Note:** This project focuses on data infrastructure only. No statistical models, regressions, or forecasting are implemented yet.
 
 ## Project Goal
 
-The project is designed to model how macro regime and "opinion" factors affect the U.S. 2-year Treasury yield (daily, from FRED series `DGS2`). The infrastructure supports:
-
-- Pulling macro/economic regime variables (unemployment, CPI, GDP, Fed funds)
-- Pulling opinion/expectation variables (curve slope: 10Y - 2Y)
-- Preparing for future integration with external probability series:
-  - CME FedWatch (Fed-meeting outcome probabilities)
-  - Polymarket (binary event odds)
+Model how macro regime and "opinion" factors affect U.S. 2-year Treasury yields, with the ability to compare against external probability series from:
+- CME FedWatch (Fed meeting outcome probabilities)
+- Polymarket (binary event odds)
 
 ## Project Structure
 
 ```
-.
-├── .venv/                    # Virtual environment (created by make venv)
+ExamplesFixedIncomeModelling/
+├── .venv/                    # Virtual environment
 ├── data/
 │   ├── raw/
-│   │   ├── fred/            # FRED data (CSV files)
-│   │   ├── fedwatch/        # FedWatch Excel files (manual download)
+│   │   ├── fred/            # FRED CSV files
+│   │   ├── fedwatch/        # FedWatch Excel files
 │   │   └── polymarket/      # Polymarket JSON/CSV files
-│   └── processed/           # Processed/merged datasets
+│   └── processed/           # Merged panels
 ├── notebooks/
-│   └── 00_data_overview.ipynb  # EDA and sanity checks
+│   └── 00_data_overview.ipynb  # Basic EDA and sanity checks
 ├── src/
 │   ├── config.py            # Configuration settings
 │   ├── data/
-│   │   ├── fred_loader.py       # FRED data download/loading
-│   │   ├── fedwatch_loader.py   # FedWatch Excel parsing
+│   │   ├── fred_loader.py   # FRED data download and loading
+│   │   ├── fedwatch_loader.py  # FedWatch Excel parsing
 │   │   ├── polymarket_loader.py # Polymarket API fetching
-│   │   └── merge_panel.py       # Panel merging utilities
+│   │   └── merge_panel.py   # Panel builder for unified datasets
 │   └── utils/
-│       ├── logging_utils.py     # Logging setup
-│       └── paths.py             # Path utilities
+│       ├── paths.py         # Path utility functions
+│       └── logging_utils.py # Logging setup
 ├── Makefile                 # Common tasks
 ├── requirements.txt         # Python dependencies
 └── README.md               # This file
 ```
 
-## Environment Setup
+## Setup Instructions
 
-### Prerequisites
+### 1. Prerequisites
 
 - Python >= 3.10
-- Make (for using Makefile commands)
+- `make` (optional, for using Makefile commands)
 
-### Installation
+### 2. Create Virtual Environment
 
-1. **Create virtual environment and install dependencies:**
-   ```bash
-   make venv
-   make install
-   ```
+```bash
+make venv
+```
 
-   This will:
-   - Create a virtual environment in `.venv/`
-   - Install all required packages from `requirements.txt`
+Or manually:
+```bash
+python3 -m venv .venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+```
 
-2. **Set up environment variables:**
-   
-   Create a `.env` file in the project root with your FRED API key:
-   ```
-   FRED_API_KEY=your_fred_api_key_here
-   ```
-   
-   To get a FRED API key (free):
-   - Visit https://fred.stlouisfed.org/docs/api/api_key.html
-   - Sign up and request an API key
+### 3. Install Dependencies
 
-### Dependencies
+```bash
+make install
+```
 
-The project uses:
-- `pandas` >= 2.0.0 - Data manipulation
-- `numpy` >= 1.24.0 - Numerical operations
-- `matplotlib` >= 3.7.0 - Plotting
-- `requests` >= 2.31.0 - HTTP requests
-- `python-dotenv` >= 1.0.0 - Environment variable management
-- `openpyxl` >= 3.1.0 - Excel file reading (for FedWatch)
-- `pyarrow` >= 12.0.0 - Fast data I/O (optional)
-- `jupyterlab` >= 4.0.0 - Jupyter notebooks
-- `fredapi` >= 0.5.0 - FRED API wrapper
+Or manually:
+```bash
+pip install -r requirements.txt
+```
+
+### 4. Configure API Keys
+
+Create a `.env` file in the project root:
+
+```bash
+cp .env.example .env
+```
+
+Edit `.env` and add your FRED API key:
+
+```
+FRED_API_KEY=your_fred_api_key_here
+```
+
+**Getting a FRED API Key:**
+1. Go to https://fred.stlouisfed.org/docs/api/api_key.html
+2. Sign up for a free account
+3. Request an API key (free, no credit card required)
+4. Copy the key to your `.env` file
 
 ## Data Sources
 
-### 1. FRED (St. Louis Fed)
+### FRED (St. Louis Fed)
 
-The project downloads the following FRED series (all free, no login required beyond API key):
+The project downloads the following FRED series:
 
-**Underlying:**
-- `DGS2` - 2-Year Treasury Constant Maturity Rate (daily)
+- **Underlying:**
+  - `DGS2` - 2-Year Treasury Constant Maturity Rate (daily)
 
-**Curve component:**
-- `DGS10` - 10-Year Treasury Constant Maturity Rate (daily)
-- Computed: `slope_10y_2y = DGS10 - DGS2`
+- **Curve component:**
+  - `DGS10` - 10-Year Treasury Constant Maturity Rate (daily)
+  - Computed: `slope_10y_2y = DGS10 - DGS2`
 
-**Macro regime:**
-- `UNRATE` - Unemployment Rate (monthly)
-- `CPIAUCSL` - Consumer Price Index (monthly, index)
-- `FEDFUNDS` - Effective Federal Funds Rate (daily/monthly)
-- `GDPC1` - Real Gross Domestic Product (quarterly)
+- **Macro regime:**
+  - `UNRATE` - Unemployment Rate (monthly)
+  - `CPIAUCSL` - Consumer Price Index (monthly)
+  - `FEDFUNDS` - Effective Federal Funds Rate (daily/monthly)
+  - `GDPC1` - Real Gross Domestic Product (quarterly)
 
-**Downloading FRED data:**
+### CME FedWatch
+
+FedWatch data must be manually downloaded from the CME FedWatch tool website and placed in `data/raw/fedwatch/`.
+
+**File naming convention:** `fedwatch_meeting_YYYYMMDD.xlsx`
+
+The loader parses Excel files to extract:
+- Meeting date
+- Target rate ranges (low, high in basis points)
+- Probabilities for each outcome
+
+### Polymarket
+
+Polymarket data is fetched via their public API. The loader supports fetching historical data for binary contracts by market ID.
+
+## Usage
+
+### Download Data
+
+Download all FRED series:
+
 ```bash
 make download-data
 ```
 
-Or programmatically:
-```python
-from src.data.fred_loader import load_all_fred_data
-from src.config import FRED_SERIES
-import os
-from dotenv import load_dotenv
-
-load_dotenv()
-api_key = os.getenv("FRED_API_KEY")
-load_all_fred_data(FRED_SERIES, api_key)
+Or manually:
+```bash
+python -c "from src.data.fred_loader import load_all_fred_data; from src.config import FRED_SERIES; import os; from dotenv import load_dotenv; load_dotenv(); api_key = os.getenv('FRED_API_KEY'); load_all_fred_data(FRED_SERIES, api_key)"
 ```
 
-Data is saved as CSV files in `data/raw/fred/{SERIES_ID}.csv` with columns:
-- `date` - Datetime index
-- `value` - Series value
+### Using the Data Loaders
 
-### 2. CME FedWatch
+#### FRED Data
 
-FedWatch data must be **manually downloaded** from the CME FedWatch tool website and placed in `data/raw/fedwatch/`.
-
-**File naming convention:**
-- Files should be named like `fedwatch_meeting_YYYYMMDD.xlsx` (e.g., `fedwatch_meeting_20240320.xlsx`)
-
-**Expected file structure:**
-Each Excel file should contain:
-- Meeting date information
-- Target rate ranges (low, high) in basis points
-- Probabilities for each range
-
-The `fedwatch_loader.py` module will:
-- Scan for all Excel files in `data/raw/fedwatch/`
-- Parse each file into a tidy DataFrame with columns:
-  - `as_of_date` - Date the probabilities refer to
-  - `meeting_date` - Date of the FOMC meeting
-  - `target_range_low` - Lower bound of target rate (in bps)
-  - `target_range_high` - Upper bound of target rate (in bps)
-  - `probability` - Probability as fraction (0-1)
-
-**Note:** The parser is flexible and attempts to handle common FedWatch formats. You may need to adjust `parse_fedwatch_file()` in `src/data/fedwatch_loader.py` based on the actual file structure you download.
-
-### 3. Polymarket
-
-Polymarket data is fetched via their public API (no authentication required).
-
-**Fetching data:**
 ```python
-from src.data.polymarket_loader import fetch_market_history
+from src.data.fred_loader import download_series, load_series, merge_fred_panel
 
-# Fetch data for a specific market
-market_id = "your-market-id-or-slug"
-fetch_market_history(market_id)
+# Download a single series
+download_series('DGS2')
+
+# Load a cached series
+df = load_series('DGS2')
+
+# Merge all series into a daily panel
+panel = merge_fred_panel()
 ```
 
-Data is saved as JSON in `data/raw/polymarket/{market_id}.json` and can be loaded into a DataFrame with columns:
-- `datetime` - UTC timestamp
-- `price` - Market price (~probability for "YES" outcome)
-- `volume` - Trading volume (if available)
-- `liquidity` - Market liquidity (if available)
-
-**Note:** The Polymarket API structure may vary. The loader attempts multiple endpoints and formats. You may need to customize `fetch_market_history()` and `load_polymarket_data()` based on the actual API structure.
-
-## Usage
-
-### Building a Unified Panel
-
-The main workflow is to build a unified daily panel that merges FRED data with FedWatch probabilities:
+#### FedWatch Data
 
 ```python
-from src.data.merge_panel import build_fed_panel
-import pandas as pd
+from src.data.fedwatch_loader import load_all_fedwatch, extract_daily_probability_series
 
-# Build panel with all available data
-df = build_fed_panel()
+# Load all FedWatch files
+all_data = load_all_fedwatch()
 
-# Or specify date range and FedWatch filters
-df = build_fed_panel(
-    start_date=pd.Timestamp("2023-01-01"),
-    end_date=pd.Timestamp("2024-12-31"),
-    meeting_date=pd.Timestamp("2024-03-20"),
-    target_range=(425, 450)  # 25bp hike in bps
+# Extract daily probability series for a specific meeting/outcome
+prob_series = extract_daily_probability_series(
+    meeting_date=pd.Timestamp('2024-03-20'),
+    target_range=(425, 450)  # 25bp hike
 )
 ```
 
-The resulting DataFrame has columns:
-- `date` - Daily date index
-- `y_2y` - 2-Year Treasury yield
-- `y_10y` - 10-Year Treasury yield
-- `slope_10y_2y` - 10Y - 2Y spread
-- `unemployment` - Unemployment rate (forward-filled to daily)
-- `cpi` - CPI index (forward-filled to daily)
-- `fed_funds` - Fed funds rate (forward-filled to daily)
-- `gdp` - Real GDP (forward-filled to daily, quarterly data)
-- `p_fed_outcome` - FedWatch probability for chosen outcome (forward-filled)
+#### Polymarket Data
 
-### Running the Data Overview Notebook
+```python
+from src.data.polymarket_loader import fetch_market_history, load_polymarket_data
 
-The notebook `notebooks/00_data_overview.ipynb` provides basic sanity checks:
+# Fetch and save market data
+fetch_market_history('market_id_here')
 
-1. Loads the Fed panel
-2. Displays basic info (`head()`, `info()`, `describe()`)
-3. Visualizes:
-   - 2-Year Treasury yield over time
-   - (TODO: FedWatch probability over time)
-   - (TODO: Scatter plot of 2Y yield vs FedWatch probability)
-
-To run:
-```bash
-# Activate virtual environment
-source .venv/bin/activate  # On Linux/Mac
-# or
-.venv\Scripts\activate  # On Windows
-
-# Start Jupyter
-jupyter lab
+# Load cached data
+df = load_polymarket_data('market_id_here')
 ```
+
+#### Build Unified Panel
+
+```python
+from src.data.merge_panel import build_fed_panel
+
+# Build daily panel with FRED + FedWatch data
+panel = build_fed_panel(
+    start_date=pd.Timestamp('2020-01-01'),
+    end_date=pd.Timestamp('2024-12-31')
+)
+```
+
+### Notebooks
+
+Run the data overview notebook:
+
+```bash
+jupyter lab notebooks/00_data_overview.ipynb
+```
+
+Or:
+
+```bash
+jupyter notebook notebooks/00_data_overview.ipynb
+```
+
+The notebook includes:
+- Basic data inspection (`head()`, `info()`, `describe()`)
+- Visualizations:
+  - 2Y yield over time
+  - FedWatch probability over time
+  - 2Y yield vs FedWatch probability (scatter)
 
 ## Makefile Commands
 
-```bash
-make venv          # Create virtual environment
-make install       # Install dependencies (also creates venv if needed)
-make download-data # Download/refresh FRED data
-make clean         # Clean cache and temporary files
-make help          # Show available commands
-```
+- `make venv` - Create virtual environment
+- `make install` - Install dependencies
+- `make download-data` - Download/refresh FRED data
+- `make clean` - Clean cache and temporary files
+- `make help` - Show available commands
 
-## Configuration
+## Data Processing Notes
 
-Configuration is centralized in `src/config.py`:
+### Frequency Alignment
 
-- **Data directories:** Paths to raw and processed data
-- **FRED series:** List of series IDs to download
-- **Column mappings:** Standardized column names for merged panel
-- **FedWatch settings:** File patterns and outcome mappings (placeholder)
+- Monthly series (unemployment, CPI) are forward-filled to daily frequency
+- Quarterly series (GDP) are forward-filled to daily frequency
+- Daily series (yields, Fed funds) are kept as-is
 
-## Alignment with Original Design
+### Derived Features
 
-This implementation aligns with the original design specification:
-
-✅ **Environment Setup:**
-- Python >= 3.10 support
-- Virtual environment with all required packages
-- Makefile with common tasks
-- README documentation
-
-✅ **Project Structure:**
-- Matches specified directory layout
-- Clean separation of concerns (data loaders, utils, config)
-
-✅ **FRED Data:**
-- Downloads all specified series (DGS2, DGS10, UNRATE, CPIAUCSL, FEDFUNDS, GDPC1)
-- Saves as CSV with standardized format (date, value)
-- Merges into daily panel with forward-fill for monthly/quarterly data
-- Computes derived features (slope_10y_2y)
-
-✅ **FedWatch:**
-- Scans for Excel files
-- Parses to tidy DataFrame with required columns
-- Extracts daily probability series for chosen meeting/outcome
-
-✅ **Polymarket:**
-- Fetches data for single market via API
-- Saves raw JSON
-- Normalizes to DataFrame with datetime, price, volume, liquidity
-
-✅ **Panel Merging:**
-- `build_fed_panel()` creates unified daily panel
-- Handles frequency alignment (forward-fill)
-- Placeholder for `build_polymarket_panel()`
-
-✅ **Utilities:**
-- Config module with all settings
-- Path utilities for data directories
-- Logging setup
-
-⚠️ **Notebook:**
-- Basic structure in place
-- Loads panel and shows basic stats
-- Has 2Y yield plot
-- **Missing:** FedWatch probability plot and scatter plot (2Y vs probability)
+- `slope_10y_2y`: Computed as `DGS10 - DGS2`
+- `cpi_yoy`: Year-over-year CPI change (if computed)
 
 ## Next Steps
 
-This project is **data preparation only**. The next phase would involve:
+This infrastructure is ready for:
+- Statistical modelling of yield movements
+- Regression analysis of macro factors
+- Comparison with external probability series
+- Event study analysis
 
-1. Completing notebook visualizations (FedWatch probability plots)
-2. Adding more robust error handling for FedWatch parser
-3. Testing with actual FedWatch Excel files
-4. Validating Polymarket API endpoints
-5. **Then:** Plugging in statistical models (regressions, ML, etc.)
+**Note:** No models are implemented yet. This is purely data infrastructure.
 
-## Notes
+## Troubleshooting
 
-- **No models implemented:** As per design, this project focuses solely on data infrastructure
-- **FedWatch parser:** May need customization based on actual file format
-- **Polymarket API:** Endpoints may need updates based on actual API structure
-- **Data freshness:** FRED data can be refreshed with `make download-data`
-- **Environment variables:** `.env` file is gitignored - create your own with `FRED_API_KEY`
+### FRED API Key Issues
+
+If you get "FRED_API_KEY not found" errors:
+1. Ensure `.env` file exists in project root
+2. Check that `FRED_API_KEY=your_key` is set in `.env`
+3. Verify the API key is valid at https://fred.stlouisfed.org
+
+### FedWatch Files Not Found
+
+If FedWatch data is missing:
+1. Manually download Excel files from CME FedWatch website
+2. Place files in `data/raw/fedwatch/`
+3. Use naming convention: `fedwatch_meeting_YYYYMMDD.xlsx`
+
+### Import Errors
+
+If you get import errors:
+1. Ensure virtual environment is activated
+2. Verify all dependencies are installed: `pip install -r requirements.txt`
+3. Check that you're running from the project root directory
 
 ## License
 
-[Add your license here]
+This project is for research purposes.
 
+## Contributing
+
+This is a research project. Contributions and improvements are welcome.
