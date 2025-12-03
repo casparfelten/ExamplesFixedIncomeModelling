@@ -81,6 +81,10 @@ CME_FEDWATCH_BASE_URL = "https://www.cmegroup.com/CmeWS/mvc/FedWatchTool/"
 # Atlanta Fed Market Probability Tracker configuration
 ATLANTA_MPT_BASE_URL = "https://www.atlantafed.org/cqer/research/market-probability-tracker"
 
+# Inflation announcements data configuration
+INFLATION_ANNOUNCEMENTS_RAW_DIR = RAW_DATA_DIR / "inflation_announcements"
+BLS_SCHEDULE_URL = "https://www.bls.gov/schedule/news_release/cpi.htm"
+
 # Polymarket event mapping
 # Maps internal event_id to market_id and metadata
 POLYMARKET_EVENT_MAPPING = {
