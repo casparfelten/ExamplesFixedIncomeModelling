@@ -107,6 +107,17 @@ The project downloads the following FRED series:
   - `FEDFUNDS` - Effective Federal Funds Rate (daily/monthly)
   - `GDPC1` - Real Gross Domestic Product (quarterly)
 
+- **H.4.1 / Liquidity-related:**
+  - `WRESBAL` - Reserve balances of depository institutions (weekly)
+  - `WTREGEN` - Treasury General Account (daily)
+  - `RRPONTSYD` - Overnight Reverse Repurchase Agreements (daily)
+  - `WALCL` - Total assets of the Federal Reserve (weekly)
+
+- **Market stress indicators:**
+  - `BAMLH0A0HYM2` - ICE BofA US High Yield Index Option-Adjusted Spread (daily) — credit stress indicator
+  - `VIXCLS` - CBOE Volatility Index: VIX (daily) — equity market volatility
+  - `STLFSI4` - St. Louis Fed Financial Stress Index (weekly) — comprehensive stress measure
+
 ### CME FedWatch
 
 FedWatch data must be manually downloaded from the CME FedWatch tool website and placed in `data/raw/fedwatch/`.
@@ -280,6 +291,26 @@ The notebook includes:
 
 - `slope_10y_2y`: Computed as `DGS10 - DGS2`
 - `cpi_yoy`: Year-over-year CPI change (if computed)
+
+### Column Naming
+
+The processed FRED panel uses standardized column names:
+
+| FRED Series | Column Name | Description |
+|-------------|-------------|-------------|
+| DGS2 | `y_2y` | 2-Year Treasury yield |
+| DGS10 | `y_10y` | 10-Year Treasury yield |
+| UNRATE | `unemployment` | Unemployment rate |
+| CPIAUCSL | `cpi` | Consumer Price Index |
+| FEDFUNDS | `fed_funds` | Federal Funds rate |
+| GDPC1 | `gdp` | Real GDP |
+| WRESBAL | `reserve_balances` | Reserve balances |
+| WTREGEN | `treasury_general_account` | Treasury General Account |
+| RRPONTSYD | `on_rrp_balance` | ON RRP balance |
+| WALCL | `total_assets` | Fed total assets |
+| BAMLH0A0HYM2 | `hy_oas` | High-yield credit spread |
+| VIXCLS | `vix` | CBOE VIX |
+| STLFSI4 | `stlfsi` | St. Louis Fed Financial Stress Index |
 
 ## Next Steps
 

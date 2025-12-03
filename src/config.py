@@ -23,6 +23,10 @@ FRED_SERIES = [
     "WTREGEN",   # Treasury General Account (daily)
     "RRPONTSYD", # Overnight Reverse Repurchase Agreements (daily)
     "WALCL",     # Total assets of the Federal Reserve (weekly)
+    # Market stress indicators
+    "BAMLH0A0HYM2",  # ICE BofA US High Yield Index Option-Adjusted Spread (daily)
+    "VIXCLS",        # CBOE Volatility Index: VIX (daily)
+    "STLFSI4",       # St. Louis Fed Financial Stress Index (weekly)
 ]
 
 # FRED API configuration
@@ -59,6 +63,9 @@ FRED_COLUMN_MAPPING = {
     "WTREGEN": "treasury_general_account",
     "RRPONTSYD": "on_rrp_balance",
     "WALCL": "total_assets",
+    "BAMLH0A0HYM2": "hy_oas",      # High-yield credit spread (credit stress indicator)
+    "VIXCLS": "vix",               # CBOE VIX (equity volatility, proxy for market stress)
+    "STLFSI4": "stlfsi",           # St. Louis Fed Financial Stress Index
 }
 
 # FRED series metadata (units and transformation hints)
@@ -73,6 +80,10 @@ FRED_SERIES_METADATA = {
     "WTREGEN": {"unit": "millions_usd", "frequency": "daily"},
     "RRPONTSYD": {"unit": "millions_usd", "frequency": "daily"},
     "WALCL": {"unit": "millions_usd", "frequency": "weekly"},
+    # Market stress indicators
+    "BAMLH0A0HYM2": {"unit": "percent", "frequency": "daily"},   # HY OAS spread in percentage points
+    "VIXCLS": {"unit": "index", "frequency": "daily"},           # VIX index value
+    "STLFSI4": {"unit": "index", "frequency": "weekly"},         # Stress index (0 = average, positive = stress)
 }
 
 # CME FedWatch API configuration

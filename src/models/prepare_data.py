@@ -46,6 +46,7 @@ def prepare_event_data(
         - target_yield_change: Change in target yield (reaction to CPI announcement)
         - target_yield_level: Level of target yield before announcement
         - background features: gdp, unemployment, fed_funds, slope_10y_2y
+        - market stress indicators: vix, hy_oas, stlfsi
         - lagged_yield: Previous day's yield (for momentum)
     """
     logger.info("Preparing event-based CPI-Bond Yield dataset...")
@@ -241,6 +242,11 @@ def prepare_event_data(
         fed_funds = ann_row.get('fed_funds', np.nan)
         slope = ann_row.get('slope_10y_2y', np.nan)
         
+        # Get market stress indicators (new background features)
+        vix = ann_row.get('vix', np.nan)
+        hy_oas = ann_row.get('hy_oas', np.nan)
+        stlfsi = ann_row.get('stlfsi', np.nan)
+        
         # Calculate recent yield volatility (rolling std of yield changes over last 20 days)
         # This helps identify when markets are volatile and more likely to have large moves
         recent_dates = panel[panel['date'] < ann_date].tail(20)
@@ -281,6 +287,10 @@ def prepare_event_data(
             'cpi_shock_x_fed_funds': cpi_shock_mom * fed_funds if pd.notna(cpi_shock_mom) and pd.notna(fed_funds) else np.nan,
             'cpi_shock_x_unemployment': cpi_shock_mom * unemployment if pd.notna(cpi_shock_mom) and pd.notna(unemployment) else np.nan,
             'cpi_shock_x_volatility': cpi_shock_mom * yield_volatility if pd.notna(cpi_shock_mom) and pd.notna(yield_volatility) else np.nan,
+            # Market stress indicators (background features for regime discovery)
+            'vix': vix,
+            'hy_oas': hy_oas,
+            'stlfsi': stlfsi,
         }
         
         events.append(event)
