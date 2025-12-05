@@ -21,8 +21,20 @@ ExamplesFixedIncomeModelling/
 │   │   ├── fedwatch/        # FedWatch Excel files
 │   │   └── polymarket/      # Polymarket JSON/CSV files
 │   └── processed/           # Merged panels
+├── docs/
+│   ├── anomaly_detection_strategy.md  # Strategy for event detection
+│   └── audit_report.md               # Methodology audit
 ├── notebooks/
-│   └── 00_data_overview.ipynb  # Basic EDA and sanity checks
+│   ├── 00_data_overview.ipynb        # Basic EDA
+│   ├── 01_datagetter.ipynb           # Data fetching
+│   ├── 02_cpi_yield_model.ipynb      # CPI-yield regime model
+│   └── 03_regime_switching_classifier.ipynb  # Anomaly detection
+├── predictors/                        # BLACK-BOX PREDICTORS
+│   ├── base.py                       # BasePredictor interface
+│   └── cpi_large_move/               # CPI Large Move detector
+│       ├── model.py                  # Predictor implementation
+│       ├── train.py                  # Training script
+│       └── trained_model.pkl         # Saved weights
 ├── src/
 │   ├── config.py            # Configuration settings
 │   ├── data/
@@ -30,6 +42,10 @@ ExamplesFixedIncomeModelling/
 │   │   ├── fedwatch_loader.py  # FedWatch Excel parsing
 │   │   ├── polymarket_loader.py # Polymarket API fetching
 │   │   └── merge_panel.py   # Panel builder for unified datasets
+│   ├── models/
+│   │   ├── cpi_yield_model.py  # Regime-switching model
+│   │   ├── backtest.py         # Walk-forward backtesting
+│   │   └── prepare_data.py     # Event data preparation
 │   └── utils/
 │       ├── paths.py         # Path utility functions
 │       └── logging_utils.py # Logging setup
@@ -312,15 +328,55 @@ The processed FRED panel uses standardized column names:
 | VIXCLS | `vix` | CBOE VIX |
 | STLFSI4 | `stlfsi` | St. Louis Fed Financial Stress Index |
 
+## Predictors (Black-Box Models)
+
+The `predictors/` folder contains self-contained, audited prediction models that can be
+composed into larger Markov/Bayesian networks as "complex edges."
+
+### Available Predictors
+
+| Predictor | Description | FN Rate | FP Rate |
+|-----------|-------------|---------|---------|
+| `CPILargeMovePredictor` | Large yield moves around CPI | 0% | 72% |
+
+### Quick Usage
+
+```python
+from predictors import CPILargeMovePredictor
+
+predictor = CPILargeMovePredictor.load()
+result = predictor.predict({
+    'yield_volatility': 0.05,
+    'cpi_shock_mom': 0.1,
+    'fed_funds': 2.5,
+    'slope_10y_2y': 1.0,
+    'unemployment': 4.0,
+})
+
+if result.prediction:
+    print("Warning: High probability of large yield move!")
+```
+
+### Network Composition (Future)
+
+```python
+# Each predictor can be an edge in a probabilistic graph
+graph.add_edge('MarketConditions', 'YieldMoveRisk', predictor)
+```
+
+See `predictors/README.md` for full documentation.
+
+## Documentation
+
+- `docs/anomaly_detection_strategy.md` - Strategy for anomaly detection
+- `docs/audit_report.md` - Full audit of methodology and data leakage checks
+
 ## Next Steps
 
 This infrastructure is ready for:
-- Statistical modelling of yield movements
-- Regression analysis of macro factors
-- Comparison with external probability series
-- Event study analysis
-
-**Note:** No models are implemented yet. This is purely data infrastructure.
+- Building more predictors for different event types
+- Composing predictors into Markov/Bayesian networks
+- Real-time event monitoring and risk flagging
 
 ## Troubleshooting
 

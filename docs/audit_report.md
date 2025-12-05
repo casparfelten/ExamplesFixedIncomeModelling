@@ -330,9 +330,13 @@ Feature overlap between normal and abnormal:
 
 ---
 
-## Files
+## Related Documentation
 
-- **Notebook**: `notebooks/03_regime_switching_classifier.ipynb`
-- **Strategy Doc**: `docs/anomaly_detection_strategy.md`
-- **This Report**: `docs/audit_report.md`
+| Document | Contents |
+|----------|----------|
+| `docs/building_predictors_guide.md` | **Complete methodology guide** - how to build predictors, lessons learned |
+| `docs/anomaly_detection_strategy.md` | Strategy overview for anomaly detection |
+| `predictors/README.md` | Predictor module usage and creation |
+| `predictors/cpi_large_move/` | Production-ready CPI predictor |
+| `notebooks/03_regime_switching_classifier.ipynb` | Development notebook |
 

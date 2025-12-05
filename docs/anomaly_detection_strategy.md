@@ -261,3 +261,13 @@ model = RandomForestClassifier(
 4. Accept ~60% FP rate to achieve 0% FN rate
 5. Monitor for distribution shift over time
 
+---
+
+## Related Documentation
+
+| Document | Contents |
+|----------|----------|
+| `docs/building_predictors_guide.md` | **Complete methodology guide** - lessons learned, models to try, checklist |
+| `docs/audit_report.md` | Full audit of data leakage checks and verification |
+| `predictors/README.md` | How to use and create predictor modules |
+| `predictors/cpi_large_move/README.md` | Specific documentation for CPI predictor |
