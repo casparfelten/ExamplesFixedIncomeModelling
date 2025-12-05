@@ -4,8 +4,8 @@ Build QSIG Macro Graph from Grid Search Results
 ================================================
 
 This script:
-1. Loads event datasets for CPI→HY and Unemp→VIX
-2. Runs grid search (or uses cached results)
+1. Loads event datasets for CPI→HY and UNEMP→VIX
+2. Runs grid search to find optimal configurations
 3. Builds Edge objects for each FN constraint
 4. Creates the full Graph structure
 5. Saves everything to the registry
@@ -13,16 +13,20 @@ This script:
 Usage:
     python scripts/build_macro_graph.py
     
-    # Skip grid search (use cached results)
-    python scripts/build_macro_graph.py --skip-search
+    # Reuse cached grid search results
+    python scripts/build_macro_graph.py --use-cache
     
     # Specify output directory
     python scripts/build_macro_graph.py --output registry/
+
+The script is idempotent: running it again updates edges based on
+current grid-search results without duplication.
 """
 
 import argparse
 import sys
 from pathlib import Path
+from datetime import datetime
 
 # Add project root to path
 project_root = Path(__file__).parent.parent
@@ -33,7 +37,7 @@ warnings.filterwarnings('ignore')
 
 import pandas as pd
 import numpy as np
-from datetime import datetime
+import pickle
 
 from src.graph import (
     Graph,
@@ -45,7 +49,24 @@ from src.graph import (
     export_graph_summary,
 )
 from src.graph.edge_builder import build_edge_slot, build_graph_from_specs
+from src.models.event_grid_search import run_full_grid_search, find_best_configs
 
+
+# ============================================================================
+# CONFIGURATION
+# ============================================================================
+
+# Default FN constraints to build edges for
+DEFAULT_FN_CONSTRAINTS = [0.01, 0.05]  # 1% and 5%
+
+# Default large move threshold candidates
+HY_THRESHOLDS = [0.05, 0.08, 0.10, 0.12, 0.15, 0.20]  # in percentage points
+VIX_THRESHOLDS = [1.0, 1.5, 2.0, 2.5, 3.0, 3.5]  # in VIX points
+
+
+# ============================================================================
+# DATA LOADING
+# ============================================================================
 
 def load_cpi_hy_dataset():
     """
@@ -163,7 +184,8 @@ def load_cpi_hy_dataset():
     ]
     
     print(f"  Total events: {len(df)}")
-    print(f"  Train: {len(train_df)}, Test: {len(test_df)}")
+    print(f"  Train: {len(train_df)} ({train_df['date'].min().date()} to {train_df['date'].max().date()})")
+    print(f"  Test: {len(test_df)} ({test_df['date'].min().date()} to {test_df['date'].max().date()})")
     
     return train_df, test_df, features
 
@@ -190,8 +212,6 @@ def load_unemp_vix_dataset():
     unemp.columns = ['date', 'unemp_value']
     unemp['date'] = pd.to_datetime(unemp['date'])
     
-    # Unemployment is released monthly
-    # For simplicity, use first business day of each month as proxy
     events = []
     
     for i in range(1, len(unemp)):
@@ -271,7 +291,8 @@ def load_unemp_vix_dataset():
     ]
     
     print(f"  Total events: {len(df)}")
-    print(f"  Train: {len(train_df)}, Test: {len(test_df)}")
+    print(f"  Train: {len(train_df)} ({train_df['date'].min().date()} to {train_df['date'].max().date()})")
+    print(f"  Test: {len(test_df)} ({test_df['date'].min().date()} to {test_df['date'].max().date()})")
     
     return train_df, test_df, features
 
@@ -285,16 +306,31 @@ def _get_prev_month(period: str) -> str:
         return f"{year}-{month - 1:02d}"
 
 
-def run_grid_search_for_spec(
+# ============================================================================
+# GRID SEARCH
+# ============================================================================
+
+def run_grid_search_and_save(
     spec: EdgeSpec,
     train_df: pd.DataFrame,
     test_df: pd.DataFrame,
     features: list,
-):
-    """Run grid search for a given spec."""
-    from src.models.event_grid_search import run_full_grid_search
+    cache_dir: Path,
+    force: bool = False,
+) -> pd.DataFrame:
+    """
+    Run grid search and save results to cache.
     
-    print(f"\nRunning grid search for {spec.slot_id}...")
+    Returns cached results if available and force=False.
+    """
+    cache_file = cache_dir / f"grid_search_{spec.slot_id.replace('->', '_')}.csv"
+    
+    if cache_file.exists() and not force:
+        print(f"  Loading cached grid search results from {cache_file}")
+        return pd.read_csv(cache_file)
+    
+    print(f"  Running grid search for {spec.slot_id}...")
+    print(f"  Thresholds: {spec.large_threshold_candidates}")
     
     results = run_full_grid_search(
         train_df, test_df,
@@ -304,14 +340,63 @@ def run_grid_search_for_spec(
         verbose=True,
     )
     
-    print(f"  Total configurations: {len(results)}")
+    if len(results) > 0:
+        cache_file.parent.mkdir(parents=True, exist_ok=True)
+        results.to_csv(cache_file, index=False)
+        print(f"  Saved {len(results)} results to {cache_file}")
     
     return results
 
 
+def select_best_configs_from_grid(
+    grid_results: pd.DataFrame,
+    fn_constraints: list,
+) -> dict:
+    """
+    Select best configuration for each FN constraint.
+    
+    Returns dict mapping fn_constraint -> config dict
+    """
+    configs = {}
+    
+    for fn_constraint in fn_constraints:
+        best = find_best_configs(grid_results, max_fn_rate=fn_constraint)
+        
+        if len(best) == 0:
+            print(f"  ⚠️  No configs found for FN≤{fn_constraint*100:.0f}%")
+            continue
+        
+        # Take the top result (best TN/FP among those meeting constraint)
+        top = best.iloc[0]
+        
+        configs[fn_constraint] = {
+            'model': top['model'],
+            'weight': top['weight'],
+            'large_threshold': top['large_threshold'],
+            'prob_threshold': top['prob_threshold'],
+            'auc': top['auc'],
+            'tp': int(top['TP']),
+            'fp': int(top['FP']),
+            'fn': int(top['FN']),
+            'tn': int(top['TN']),
+            'fn_rate': top['fn_rate'],
+            'tn_fp_ratio': top['tn_fp_ratio'],
+        }
+        
+        print(f"  FN≤{fn_constraint*100:.0f}%: {top['model']} w={top['weight']}, "
+              f"thresh={top['large_threshold']:.2f}, @{top['prob_threshold']:.2f}, "
+              f"AUC={top['auc']:.3f}, TN/FP={top['tn_fp_ratio']:.2f}x")
+    
+    return configs
+
+
+# ============================================================================
+# MAIN
+# ============================================================================
+
 def main():
     parser = argparse.ArgumentParser(description="Build QSIG Macro Graph")
-    parser.add_argument("--skip-search", action="store_true", help="Skip grid search (use manual configs)")
+    parser.add_argument("--use-cache", action="store_true", help="Use cached grid search results")
     parser.add_argument("--output", type=str, default="registry", help="Output directory")
     args = parser.parse_args()
     
@@ -319,10 +404,14 @@ def main():
     output_dir.mkdir(parents=True, exist_ok=True)
     model_dir = output_dir / "models"
     model_dir.mkdir(parents=True, exist_ok=True)
+    cache_dir = output_dir / "cache"
+    cache_dir.mkdir(parents=True, exist_ok=True)
     
     print("=" * 70)
     print("QSIG MACRO GRAPH BUILDER")
     print("=" * 70)
+    print(f"Output: {output_dir}")
+    print(f"Use cache: {args.use_cache}")
     
     # Define node IDs
     nodes = {
@@ -341,8 +430,8 @@ def main():
         background_features=["yield_vol_10y", "hy_vol", "slope_10y_2y", "fed_funds", "hy_oas_before", "stlfsi"],
         target_col="hy_change",
         target_unit="bp",
-        large_threshold_candidates=[0.05, 0.08, 0.10, 0.12, 0.15],
-        fn_constraints=[0.01, 0.05],
+        large_threshold_candidates=HY_THRESHOLDS,
+        fn_constraints=DEFAULT_FN_CONSTRAINTS,
     )
     
     unemp_vix_spec = EdgeSpec(
@@ -353,8 +442,8 @@ def main():
         background_features=["vix_vol", "yield_vol_10y", "slope_10y_2y", "fed_funds", "vix_before", "stlfsi"],
         target_col="vix_change",
         target_unit="points",
-        large_threshold_candidates=[1.0, 1.5, 2.0, 2.5, 3.0],
-        fn_constraints=[0.01, 0.05],
+        large_threshold_candidates=VIX_THRESHOLDS,
+        fn_constraints=DEFAULT_FN_CONSTRAINTS,
     )
     
     specs = [cpi_hy_spec, unemp_vix_spec]
@@ -383,86 +472,54 @@ def main():
             print(f"Unknown spec: {spec.slot_id}")
             continue
         
-        if args.skip_search:
-            # Use known best configurations from methodology doc
-            print("\nUsing known best configurations (skipping grid search)...")
-            
-            if spec.slot_id == "CPI->HY_OAS":
-                # LogReg, w=50, 15bp, @0.80
-                edges = [
-                    builder.build_from_config(
-                        spec=spec,
-                        model_type="LogReg",
-                        weight=50,
-                        large_threshold=0.15,
-                        prob_cutoff=0.80,
-                        fn_constraint=0.01,
-                        train_df=train_df,
-                        test_df=test_df,
-                        features=features,
-                    ),
-                    builder.build_from_config(
-                        spec=spec,
-                        model_type="LogReg",
-                        weight=50,
-                        large_threshold=0.15,
-                        prob_cutoff=0.80,
-                        fn_constraint=0.05,
-                        train_df=train_df,
-                        test_df=test_df,
-                        features=features,
-                    ),
-                ]
-            elif spec.slot_id == "UNEMP->VIX":
-                # FN≤1%: RF_shallow, w=50, 2.5pt, @0.20
-                # FN≤5%: GB, w=20, 2.0pt, @0.05
-                edges = [
-                    builder.build_from_config(
-                        spec=spec,
-                        model_type="RF_shallow",
-                        weight=50,
-                        large_threshold=2.5,
-                        prob_cutoff=0.20,
-                        fn_constraint=0.01,
-                        train_df=train_df,
-                        test_df=test_df,
-                        features=features,
-                    ),
-                    builder.build_from_config(
-                        spec=spec,
-                        model_type="GB",
-                        weight=20,
-                        large_threshold=2.0,
-                        prob_cutoff=0.05,
-                        fn_constraint=0.05,
-                        train_df=train_df,
-                        test_df=test_df,
-                        features=features,
-                    ),
-                ]
-            else:
-                edges = []
-        else:
-            # Run grid search
-            grid_results = run_grid_search_for_spec(spec, train_df, test_df, features)
-            
-            if len(grid_results) == 0:
-                print(f"No grid search results for {spec.slot_id}")
-                continue
-            
-            # Build edges from grid search
-            edges = builder.build_from_grid_search(
+        # Run grid search
+        grid_results = run_grid_search_and_save(
+            spec=spec,
+            train_df=train_df,
+            test_df=test_df,
+            features=features,
+            cache_dir=cache_dir,
+            force=not args.use_cache,
+        )
+        
+        if len(grid_results) == 0:
+            print(f"  No grid search results for {spec.slot_id}")
+            continue
+        
+        print(f"\n  Total configurations tested: {len(grid_results)}")
+        
+        # Select best configs
+        print(f"\n  Selecting best configs:")
+        best_configs = select_best_configs_from_grid(grid_results, spec.fn_constraints)
+        
+        if not best_configs:
+            print(f"  No valid configs found for {spec.slot_id}")
+            continue
+        
+        # Build edges from best configs
+        print(f"\n  Building edges...")
+        edges = []
+        
+        for fn_constraint, config in best_configs.items():
+            edge = builder.build_from_config(
                 spec=spec,
-                grid_results=grid_results,
+                model_type=config['model'],
+                weight=config['weight'],
+                large_threshold=config['large_threshold'],
+                prob_cutoff=config['prob_threshold'],
+                fn_constraint=fn_constraint,
                 train_df=train_df,
                 test_df=test_df,
                 features=features,
+                save_model=True,
+                include_test_predictions=True,
             )
+            edges.append(edge)
         
         edges_by_slot[spec.slot_id] = edges
         
         # Print edge summaries
-        print(f"\nBuilt {len(edges)} edges:")
+        print(f"\n  Built {len(edges)} edges:")
         for edge in edges:
             print(f"\n{edge.summary()}")
     
@@ -481,7 +538,7 @@ def main():
     
     print(f"\n{graph.summary()}")
     
-    # Save graph
+    # Save graph (compact)
     graph_path = output_dir / "macro_graph.json"
     save_graph(graph, graph_path, exclude_test_predictions=True)
     
@@ -501,10 +558,10 @@ def main():
     print(f"  Graph (full):    {full_graph_path}")
     print(f"  Summary:         {summary_path}")
     print(f"  Models:          {model_dir}/")
+    print(f"  Cache:           {cache_dir}/")
     
     return graph
 
 
 if __name__ == "__main__":
     main()
-

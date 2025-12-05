@@ -1,0 +1,8 @@
+======================================================================
+GRID SEARCH FOR MODEL DISCOVERY
+======================================================================
+Output: /home/bitzaven/CodingProjects/ExamplesFixedIncomeModelling/registry/search_results
+Force: True
+
+Error: Unknown mapping 'CPI-'
+Available: ['CPI->HY_OAS', 'UNEMP->VIX']

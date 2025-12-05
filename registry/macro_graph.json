@@ -8,20 +8,30 @@
       "name": "CPI",
       "description": "Consumer Price Index release"
     },
-    "HY_OAS": {
-      "type": "instrument",
-      "name": "HY_OAS",
-      "description": "High-Yield OAS spread"
-    },
     "UNEMPLOYMENT": {
       "type": "event",
       "name": "UNEMPLOYMENT",
       "description": "BLS Employment Situation"
     },
+    "HY_OAS": {
+      "type": "instrument",
+      "name": "HY_OAS",
+      "description": "High-Yield OAS spread"
+    },
     "VIX": {
       "type": "instrument",
       "name": "VIX",
       "description": "CBOE Volatility Index"
+    },
+    "YIELD_2Y": {
+      "type": "instrument",
+      "name": "YIELD_2Y",
+      "description": "2-Year Treasury yield"
+    },
+    "YIELD_10Y": {
+      "type": "instrument",
+      "name": "YIELD_10Y",
+      "description": "10-Year Treasury yield"
     }
   },
   "edge_slots": {
@@ -37,7 +47,7 @@
         "name": "HY_OAS",
         "description": "High-Yield OAS spread"
       },
-      "description": "CPI \u2192 HY_OAS large move probability",
+      "description": "CPI announcement \u2192 large HY OAS move probability",
       "feature_spec": {
         "active_factor": "cpi_shock_abs",
         "background_features": [
@@ -50,8 +60,8 @@
         ]
       },
       "edges": {
-        "CPI->HY_OAS__FN1pct__LogReg_w50_thr0p15": {
-          "edge_id": "CPI->HY_OAS__FN1pct__LogReg_w50_thr0p15",
+        "CPI->HY_OAS__fn_1pct__cpi_hy_rf_shallow_w20_20bp": {
+          "edge_id": "CPI->HY_OAS__fn_1pct__cpi_hy_rf_shallow_w20_20bp",
           "slot_id": "CPI->HY_OAS",
           "from_node": {
             "type": "event",
@@ -63,8 +73,8 @@
             "name": "HY_OAS",
             "description": "High-Yield OAS spread"
           },
-          "model_type": "LogReg",
-          "model_location": "registry/models/CPI->HY_OAS__FN1pct__LogReg_w50_thr0p15.pkl",
+          "model_type": "RF_shallow",
+          "model_location": "/home/bitzaven/CodingProjects/ExamplesFixedIncomeModelling/registry/models/models/cpi_hy_rf_shallow_w20_20bp/model.pkl",
           "active_factor": "cpi_shock_abs",
           "background_features": [
             "yield_vol_10y",
@@ -77,12 +87,12 @@
           "target_series": "HY_OAS",
           "target_unit": "bp",
           "large_move_threshold": {
-            "value": 0.15,
-            "definition": "92th percentile of |\u0394hy_change|"
+            "value": 0.2,
+            "definition": "abs(hy_change) >= 0.2"
           },
           "fn_constraint": 0.01,
-          "prob_cutoff": 0.8,
-          "threshold_selection_method": "grid_search + FN\u22641% constraint on test",
+          "prob_cutoff": 0.15,
+          "threshold_selection_method": "manual promotion from grid_search_2025-12-05",
           "stats": {
             "train_period": [
               "1997-01-14",
@@ -93,27 +103,25 @@
               "2025-10-24"
             ],
             "n_test_events": 100,
-            "n_test_pos": 8,
-            "n_test_neg": 92,
-            "tp": 7,
-            "fp": 36,
-            "fn": 1,
-            "tn": 56,
-            "auc": 0.8410326086956521,
-            "base_rate": 0.08,
-            "fn_rate": 0.125,
-            "fp_rate": 0.391304347826087,
-            "precision": 0.16279069767441862,
-            "tn_fp_ratio": 1.5555555555555556,
-            "test_predictions": null
+            "n_test_pos": 3,
+            "n_test_neg": 97,
+            "tp": 3,
+            "fp": 11,
+            "fn": 0,
+            "tn": 86,
+            "auc": 0.9072164948453609,
+            "base_rate": 0.03,
+            "fn_rate": 0.0,
+            "fp_rate": 0.1134020618556701,
+            "precision": 0.21428571428571427,
+            "tn_fp_ratio": 7.818181818181818
           },
-          "version": "2025-12-05_cpi_hy_oas_v1",
-          "created_at": "2025-12-05T21:54:17.599217Z",
-          "created_by": "build_macro_graph.py",
-          "notes": "n_test_pos=8, treat as fragile if low",
+          "version": "2025-12-05_cpi_hy_rf_shallow_w20_20bp",
+          "created_at": "2025-12-05T22:18:23.030603Z",
+          "created_by": "build_graph.py",
+          "notes": "n_test_pos=3",
           "model_params": {
-            "max_iter": 1000,
-            "weight": 50
+            "weight": 20
           },
           "feature_medians": {
             "cpi_shock_abs": 0.42499999999999716,
@@ -125,8 +133,8 @@
             "stlfsi": 0.03435
           }
         },
-        "CPI->HY_OAS__FN5pct__LogReg_w50_thr0p15": {
-          "edge_id": "CPI->HY_OAS__FN5pct__LogReg_w50_thr0p15",
+        "CPI->HY_OAS__fn_5pct__cpi_hy_rf_shallow_w20_20bp": {
+          "edge_id": "CPI->HY_OAS__fn_5pct__cpi_hy_rf_shallow_w20_20bp",
           "slot_id": "CPI->HY_OAS",
           "from_node": {
             "type": "event",
@@ -138,8 +146,8 @@
             "name": "HY_OAS",
             "description": "High-Yield OAS spread"
           },
-          "model_type": "LogReg",
-          "model_location": "registry/models/CPI->HY_OAS__FN5pct__LogReg_w50_thr0p15.pkl",
+          "model_type": "RF_shallow",
+          "model_location": "/home/bitzaven/CodingProjects/ExamplesFixedIncomeModelling/registry/models/models/cpi_hy_rf_shallow_w20_20bp/model.pkl",
           "active_factor": "cpi_shock_abs",
           "background_features": [
             "yield_vol_10y",
@@ -152,12 +160,12 @@
           "target_series": "HY_OAS",
           "target_unit": "bp",
           "large_move_threshold": {
-            "value": 0.15,
-            "definition": "92th percentile of |\u0394hy_change|"
+            "value": 0.2,
+            "definition": "abs(hy_change) >= 0.2"
           },
           "fn_constraint": 0.05,
-          "prob_cutoff": 0.8,
-          "threshold_selection_method": "grid_search + FN\u22645% constraint on test",
+          "prob_cutoff": 0.15,
+          "threshold_selection_method": "manual promotion from grid_search_2025-12-05",
           "stats": {
             "train_period": [
               "1997-01-14",
@@ -168,27 +176,25 @@
               "2025-10-24"
             ],
             "n_test_events": 100,
-            "n_test_pos": 8,
-            "n_test_neg": 92,
-            "tp": 7,
-            "fp": 36,
-            "fn": 1,
-            "tn": 56,
-            "auc": 0.8410326086956521,
-            "base_rate": 0.08,
-            "fn_rate": 0.125,
-            "fp_rate": 0.391304347826087,
-            "precision": 0.16279069767441862,
-            "tn_fp_ratio": 1.5555555555555556,
-            "test_predictions": null
+            "n_test_pos": 3,
+            "n_test_neg": 97,
+            "tp": 3,
+            "fp": 11,
+            "fn": 0,
+            "tn": 86,
+            "auc": 0.9072164948453609,
+            "base_rate": 0.03,
+            "fn_rate": 0.0,
+            "fp_rate": 0.1134020618556701,
+            "precision": 0.21428571428571427,
+            "tn_fp_ratio": 7.818181818181818
           },
-          "version": "2025-12-05_cpi_hy_oas_v1",
-          "created_at": "2025-12-05T21:54:17.615654Z",
-          "created_by": "build_macro_graph.py",
-          "notes": "n_test_pos=8, treat as fragile if low",
+          "version": "2025-12-05_cpi_hy_rf_shallow_w20_20bp",
+          "created_at": "2025-12-05T22:18:23.030804Z",
+          "created_by": "build_graph.py",
+          "notes": "n_test_pos=3",
           "model_params": {
-            "max_iter": 1000,
-            "weight": 50
+            "weight": 20
           },
           "feature_medians": {
             "cpi_shock_abs": 0.42499999999999716,
@@ -201,7 +207,7 @@
           }
         }
       },
-      "default_edge_id": "CPI->HY_OAS__FN5pct__LogReg_w50_thr0p15"
+      "default_edge_id": "CPI->HY_OAS__fn_5pct__cpi_hy_rf_shallow_w20_20bp"
     },
     "UNEMP->VIX": {
       "slot_id": "UNEMP->VIX",
@@ -215,7 +221,7 @@
         "name": "VIX",
         "description": "CBOE Volatility Index"
       },
-      "description": "UNEMPLOYMENT \u2192 VIX large move probability",
+      "description": "Unemployment release \u2192 large VIX move probability",
       "feature_spec": {
         "active_factor": "unemp_surprise_abs",
         "background_features": [
@@ -228,8 +234,81 @@
         ]
       },
       "edges": {
-        "UNEMP->VIX__FN1pct__RF_shallow_w50_thr2p50": {
-          "edge_id": "UNEMP->VIX__FN1pct__RF_shallow_w50_thr2p50",
+        "UNEMP->VIX__fn_1pct__unemp_vix_extratrees_w20_3p5pt": {
+          "edge_id": "UNEMP->VIX__fn_1pct__unemp_vix_extratrees_w20_3p5pt",
+          "slot_id": "UNEMP->VIX",
+          "from_node": {
+            "type": "event",
+            "name": "UNEMPLOYMENT",
+            "description": "BLS Employment Situation"
+          },
+          "to_node": {
+            "type": "instrument",
+            "name": "VIX",
+            "description": "CBOE Volatility Index"
+          },
+          "model_type": "ExtraTrees",
+          "model_location": "/home/bitzaven/CodingProjects/ExamplesFixedIncomeModelling/registry/models/models/unemp_vix_extratrees_w20_3p5pt/model.pkl",
+          "active_factor": "unemp_surprise_abs",
+          "background_features": [
+            "vix_vol",
+            "yield_vol_10y",
+            "slope_10y_2y",
+            "fed_funds",
+            "vix_before",
+            "stlfsi"
+          ],
+          "target_series": "VIX",
+          "target_unit": "points",
+          "large_move_threshold": {
+            "value": 3.5,
+            "definition": "abs(vix_change) >= 3.5"
+          },
+          "fn_constraint": 0.01,
+          "prob_cutoff": 0.05,
+          "threshold_selection_method": "manual promotion from grid_search_2025-12-05",
+          "stats": {
+            "train_period": [
+              "1990-02-01",
+              "2015-01-01"
+            ],
+            "test_period": [
+              "2015-02-01",
+              "2025-09-01"
+            ],
+            "n_test_events": 128,
+            "n_test_pos": 4,
+            "n_test_neg": 124,
+            "tp": 4,
+            "fp": 75,
+            "fn": 0,
+            "tn": 49,
+            "auc": 0.8125,
+            "base_rate": 0.03125,
+            "fn_rate": 0.0,
+            "fp_rate": 0.6048387096774194,
+            "precision": 0.05063291139240506,
+            "tn_fp_ratio": 0.6533333333333333
+          },
+          "version": "2025-12-05_unemp_vix_extratrees_w20_3p5pt",
+          "created_at": "2025-12-05T22:18:23.030973Z",
+          "created_by": "build_graph.py",
+          "notes": "n_test_pos=4",
+          "model_params": {
+            "weight": 20
+          },
+          "feature_medians": {
+            "unemp_surprise_abs": 0.09999999999999964,
+            "vix_vol": 0.7923712457469512,
+            "yield_vol_10y": 0.04095467381291654,
+            "slope_10y_2y": 1.3750000000000004,
+            "fed_funds": 3.32,
+            "vix_before": 18.380000000000003,
+            "stlfsi": -0.1307
+          }
+        },
+        "UNEMP->VIX__fn_5pct__unemp_vix_rf_shallow_w50_1p5pt": {
+          "edge_id": "UNEMP->VIX__fn_5pct__unemp_vix_rf_shallow_w50_1p5pt",
           "slot_id": "UNEMP->VIX",
           "from_node": {
             "type": "event",
@@ -242,7 +321,7 @@
             "description": "CBOE Volatility Index"
           },
           "model_type": "RF_shallow",
-          "model_location": "registry/models/UNEMP->VIX__FN1pct__RF_shallow_w50_thr2p50.pkl",
+          "model_location": "/home/bitzaven/CodingProjects/ExamplesFixedIncomeModelling/registry/models/models/unemp_vix_rf_shallow_w50_1p5pt/model.pkl",
           "active_factor": "unemp_surprise_abs",
           "background_features": [
             "vix_vol",
@@ -255,88 +334,12 @@
           "target_series": "VIX",
           "target_unit": "points",
           "large_move_threshold": {
-            "value": 2.5,
-            "definition": "90th percentile of |\u0394vix_change|"
-          },
-          "fn_constraint": 0.01,
-          "prob_cutoff": 0.2,
-          "threshold_selection_method": "grid_search + FN\u22641% constraint on test",
-          "stats": {
-            "train_period": [
-              "1990-02-01",
-              "2015-01-01"
-            ],
-            "test_period": [
-              "2015-02-01",
-              "2025-09-01"
-            ],
-            "n_test_events": 128,
-            "n_test_pos": 12,
-            "n_test_neg": 116,
-            "tp": 9,
-            "fp": 34,
-            "fn": 3,
-            "tn": 82,
-            "auc": 0.7772988505747126,
-            "base_rate": 0.09375,
-            "fn_rate": 0.25,
-            "fp_rate": 0.29310344827586204,
-            "precision": 0.20930232558139536,
-            "tn_fp_ratio": 2.411764705882353,
-            "test_predictions": null
-          },
-          "version": "2025-12-05_unemp_vix_v1",
-          "created_at": "2025-12-05T21:54:19.777871Z",
-          "created_by": "build_macro_graph.py",
-          "notes": "n_test_pos=12, treat as fragile if low",
-          "model_params": {
-            "n_estimators": 100,
-            "max_depth": 3,
-            "weight": 50
-          },
-          "feature_medians": {
-            "unemp_surprise_abs": 0.09999999999999964,
-            "vix_vol": 0.7923712457469512,
-            "yield_vol_10y": 0.04095467381291654,
-            "slope_10y_2y": 1.3750000000000004,
-            "fed_funds": 3.32,
-            "vix_before": 18.380000000000003,
-            "stlfsi": -0.1307
-          }
-        },
-        "UNEMP->VIX__FN5pct__GB_w20_thr2p00": {
-          "edge_id": "UNEMP->VIX__FN5pct__GB_w20_thr2p00",
-          "slot_id": "UNEMP->VIX",
-          "from_node": {
-            "type": "event",
-            "name": "UNEMPLOYMENT",
-            "description": "BLS Employment Situation"
-          },
-          "to_node": {
-            "type": "instrument",
-            "name": "VIX",
-            "description": "CBOE Volatility Index"
-          },
-          "model_type": "GB",
-          "model_location": "registry/models/UNEMP->VIX__FN5pct__GB_w20_thr2p00.pkl",
-          "active_factor": "unemp_surprise_abs",
-          "background_features": [
-            "vix_vol",
-            "yield_vol_10y",
-            "slope_10y_2y",
-            "fed_funds",
-            "vix_before",
-            "stlfsi"
-          ],
-          "target_series": "VIX",
-          "target_unit": "points",
-          "large_move_threshold": {
-            "value": 2.0,
-            "definition": "85th percentile of |\u0394vix_change|"
+            "value": 1.5,
+            "definition": "abs(vix_change) >= 1.5"
           },
           "fn_constraint": 0.05,
-          "prob_cutoff": 0.05,
-          "threshold_selection_method": "grid_search + FN\u22645% constraint on test",
+          "prob_cutoff": 0.35,
+          "threshold_selection_method": "manual promotion from grid_search_2025-12-05",
           "stats": {
             "train_period": [
               "1990-02-01",
@@ -347,29 +350,25 @@
               "2025-09-01"
             ],
             "n_test_events": 128,
-            "n_test_pos": 18,
-            "n_test_neg": 110,
-            "tp": 4,
-            "fp": 14,
-            "fn": 14,
-            "tn": 96,
-            "auc": 0.6926767676767677,
-            "base_rate": 0.140625,
-            "fn_rate": 0.7777777777777778,
-            "fp_rate": 0.12727272727272726,
-            "precision": 0.2222222222222222,
-            "tn_fp_ratio": 6.857142857142857,
-            "test_predictions": null
+            "n_test_pos": 29,
+            "n_test_neg": 99,
+            "tp": 28,
+            "fp": 55,
+            "fn": 1,
+            "tn": 44,
+            "auc": 0.7206548241031001,
+            "base_rate": 0.2265625,
+            "fn_rate": 0.034482758620689655,
+            "fp_rate": 0.5555555555555556,
+            "precision": 0.3373493975903614,
+            "tn_fp_ratio": 0.8
           },
-          "version": "2025-12-05_unemp_vix_v1",
-          "created_at": "2025-12-05T21:54:19.883048Z",
-          "created_by": "build_macro_graph.py",
-          "notes": "n_test_pos=18, treat as fragile if low",
+          "version": "2025-12-05_unemp_vix_rf_shallow_w50_1p5pt",
+          "created_at": "2025-12-05T22:18:23.031101Z",
+          "created_by": "build_graph.py",
+          "notes": "n_test_pos=29",
           "model_params": {
-            "n_estimators": 100,
-            "max_depth": 3,
-            "learning_rate": 0.1,
-            "weight": 20
+            "weight": 50
           },
           "feature_medians": {
             "unemp_surprise_abs": 0.09999999999999964,
@@ -382,8 +381,8 @@
           }
         }
       },
-      "default_edge_id": "UNEMP->VIX__FN5pct__GB_w20_thr2p00"
+      "default_edge_id": "UNEMP->VIX__fn_5pct__unemp_vix_rf_shallow_w50_1p5pt"
     }
   },
-  "created_at": "2025-12-05T21:54:19.883250Z"
+  "created_at": "2025-12-05T22:18:23.030012Z"
 }

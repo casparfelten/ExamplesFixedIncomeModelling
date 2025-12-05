@@ -1,0 +1,93 @@
+# Edge Configuration for QSIG Macro Graph
+# =========================================
+#
+# This file defines which models are linked to which edge slots.
+# Models must exist in the model registry before being referenced here.
+#
+# To add a new edge:
+# 1. Run grid search to find candidates
+# 2. Review results and promote good models to registry
+# 3. Add the model_id reference here
+# 4. Run build_graph.py to regenerate the graph
+
+# Graph metadata
+graph:
+  name: "QSIG Macro Graph"
+  version: "1.0.0"
+  description: "Event → Instrument large move prediction edges"
+
+# Node definitions
+nodes:
+  events:
+    - name: CPI
+      description: "Consumer Price Index release"
+    - name: UNEMPLOYMENT
+      description: "BLS Employment Situation"
+  
+  instruments:
+    - name: HY_OAS
+      description: "High-Yield OAS spread"
+    - name: VIX
+      description: "CBOE Volatility Index"
+    - name: YIELD_2Y
+      description: "2-Year Treasury yield"
+    - name: YIELD_10Y
+      description: "10-Year Treasury yield"
+
+# Edge slot definitions
+edge_slots:
+  CPI->HY_OAS:
+    from_node: CPI
+    to_node: HY_OAS
+    description: "CPI announcement → large HY OAS move probability"
+    target_unit: bp
+    
+    # Feature specification (for documentation and validation)
+    feature_spec:
+      active_factor: cpi_shock_abs
+      background_features:
+        - yield_vol_10y
+        - hy_vol
+        - slope_10y_2y
+        - fed_funds
+        - hy_oas_before
+        - stlfsi
+    
+    # Models linked to this slot (by model_id from registry)
+    # Format: policy_label -> model_id
+    edges:
+      fn_1pct: cpi_hy_rf_shallow_w20_20bp    # FN ≤ 1% variant
+      fn_5pct: cpi_hy_rf_shallow_w20_20bp    # FN ≤ 5% variant (same model if it meets both)
+    
+    # Which edge to use by default
+    default_edge: fn_5pct
+
+  UNEMP->VIX:
+    from_node: UNEMPLOYMENT
+    to_node: VIX
+    description: "Unemployment release → large VIX move probability"
+    target_unit: points
+    
+    feature_spec:
+      active_factor: unemp_surprise_abs
+      background_features:
+        - vix_vol
+        - yield_vol_10y
+        - slope_10y_2y
+        - fed_funds
+        - vix_before
+        - stlfsi
+    
+    edges:
+      fn_1pct: unemp_vix_extratrees_w20_3p5pt  # FN ≤ 1% (high recall)
+      fn_5pct: unemp_vix_rf_shallow_w50_1p5pt  # FN ≤ 5% (balanced)
+    
+    default_edge: fn_5pct
+
+# Future slots (not yet populated)
+# CPI->YIELD_2Y:
+#   from_node: CPI
+#   to_node: YIELD_2Y
+#   description: "CPI → 2Y yield large move"
+#   edges: {}
+

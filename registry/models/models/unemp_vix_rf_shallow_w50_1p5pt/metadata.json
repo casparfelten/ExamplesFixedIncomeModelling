@@ -1,0 +1,55 @@
+{
+  "model_id": "unemp_vix_rf_shallow_w50_1p5pt",
+  "model_type": "RF_shallow",
+  "weight": 50,
+  "features": [
+    "unemp_surprise_abs",
+    "vix_vol",
+    "yield_vol_10y",
+    "slope_10y_2y",
+    "fed_funds",
+    "vix_before",
+    "stlfsi"
+  ],
+  "feature_medians": {
+    "unemp_surprise_abs": 0.09999999999999964,
+    "vix_vol": 0.7923712457469512,
+    "yield_vol_10y": 0.04095467381291654,
+    "slope_10y_2y": 1.3750000000000004,
+    "fed_funds": 3.32,
+    "vix_before": 18.380000000000003,
+    "stlfsi": -0.1307
+  },
+  "target_event": "UNEMPLOYMENT",
+  "target_instrument": "VIX",
+  "target_col": "vix_change",
+  "large_move_threshold": 1.5,
+  "large_move_definition": "abs(vix_change) >= 1.5",
+  "prob_cutoff": 0.35,
+  "train_period": [
+    "1990-02-01",
+    "2015-01-01"
+  ],
+  "test_period": [
+    "2015-02-01",
+    "2025-09-01"
+  ],
+  "n_train": 300,
+  "n_test": 128,
+  "n_test_pos": 29,
+  "n_test_neg": 99,
+  "tp": 28,
+  "fp": 55,
+  "fn": 1,
+  "tn": 44,
+  "auc": 0.7206548241031001,
+  "fn_rate": 0.034482758620689655,
+  "fp_rate": 0.5555555555555556,
+  "tn_fp_ratio": 0.8,
+  "created_at": "2025-12-05T22:17:58.223380Z",
+  "created_by": "promote_model.py",
+  "source": "grid_search_2025-12-05",
+  "notes": "n_test_pos=29",
+  "model_file": "model.pkl",
+  "scaler_file": "scaler.pkl"
+}

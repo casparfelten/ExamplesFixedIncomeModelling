@@ -16,10 +16,10 @@ Core Concepts:
 - **EdgeResult**: output from applying an Edge to an EventContext
 
 Example Usage:
-    from src.graph import Graph, EdgeRunner, EventContext
+    from src.graph import load_graph, EdgeRunner, EventContext, NodeId, NodeType
     
     # Load graph
-    graph = Graph.load("registry/macro_graph.json")
+    graph = load_graph("registry/macro_graph.json")
     
     # Create event context
     ctx = EventContext(

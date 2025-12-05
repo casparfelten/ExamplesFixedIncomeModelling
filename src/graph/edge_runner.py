@@ -293,8 +293,10 @@ class EdgeRunner:
         ]
         
         if not candidates:
-            # Fall back to safest edge if none meet the constraint
-            return self._get_safest_edge(slot)
+            # Fall back to edge with lowest actual FN rate
+            print(f"Warning: No edges in {slot.slot_id} meet FN≤{max_fn_rate*100:.0f}% "
+                  f"on test data. Using edge with lowest actual FN rate.")
+            return min(slot.edges.values(), key=lambda e: e.stats.fn_rate)
         
         # Sort by TN/FP ratio (higher is better)
         return max(candidates, key=lambda e: e.stats.tn_fp_ratio or 0)

@@ -315,6 +315,15 @@ class EdgeBuilder:
                     y_pred_flag=bool(preds[i]),
                 ))
         
+        # Compute FN rate
+        actual_fn_rate = fn / (tp + fn) if (tp + fn) > 0 else 0
+        
+        # Warn if actual FN rate exceeds stated constraint
+        if actual_fn_rate > fn_constraint:
+            print(f"  ⚠️  Warning: Actual FN rate ({actual_fn_rate*100:.1f}%) exceeds "
+                  f"stated constraint ({fn_constraint*100:.0f}%). "
+                  f"Consider running grid search to find better config.")
+        
         # Build stats
         stats = EdgeStats(
             train_period=(
@@ -334,7 +343,7 @@ class EdgeBuilder:
             tn=tn,
             auc=auc,
             base_rate=n_test_pos / n_test if n_test > 0 else 0,
-            fn_rate=fn / (tp + fn) if (tp + fn) > 0 else 0,
+            fn_rate=actual_fn_rate,
             fp_rate=fp / (fp + tn) if (fp + tn) > 0 else 0,
             test_predictions=test_predictions,
         )
