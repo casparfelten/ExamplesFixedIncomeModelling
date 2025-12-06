@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QSIG Macro Graph Explorer</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <nav class="nav">
+        <h1>QSIG Macro Graph Explorer</h1>
+        <div class="subtitle">Bayesian Event → Instrument Prediction Models</div>
+    </nav>
+
+    <main class="main">
+        <div class="graph-container">
+            <svg class="graph-svg" id="graph-svg">
+                <!-- Edges (drawn first so they appear behind nodes) -->
+                {% for edge in edges %}
+                <line class="edge" 
+                      x1="{{ nodes | selectattr('name', 'equalto', edge.from) | map(attribute='x') | first | default(100) + 80 }}"
+                      y1="{{ nodes | selectattr('name', 'equalto', edge.from) | map(attribute='y') | first | default(100) + 25 }}"
+                      x2="{{ nodes | selectattr('name', 'equalto', edge.to) | map(attribute='x') | first | default(400) }}"
+                      y2="{{ nodes | selectattr('name', 'equalto', edge.to) | map(attribute='y') | first | default(100) + 25 }}"
+                      data-edge="{{ edge.id }}"
+                      onclick="showEdgeDetails('{{ edge.id }}')">
+                </line>
+                {% endfor %}
+                
+                <!-- Nodes -->
+                {% for node in nodes %}
+                <g class="node-group" onclick="handleNodeClick('{{ node.name }}', '{{ node.type }}')">
+                    <rect class="node-{{ node.type }}" 
+                          x="{{ node.x }}" 
+                          y="{{ node.y }}" 
+                          width="80" 
+                          height="50" 
+                          rx="6">
+                    </rect>
+                    <text class="node-text" 
+                          x="{{ node.x + 40 }}" 
+                          y="{{ node.y + 30 }}">
+                        {{ node.name }}
+                    </text>
+                </g>
+                {% endfor %}
+            </svg>
+        </div>
+
+        <div class="side-panel">
+            <h3>Graph Overview</h3>
+            <div class="meta">
+                Interactive Bayesian graph showing {{ edges | length }} prediction models 
+                connecting {{ nodes | selectattr('type', 'equalto', 'event') | list | length }} events 
+                to {{ nodes | selectattr('type', 'equalto', 'instrument') | list | length }} instruments.
+            </div>
+            
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <div class="stat-value">{{ nodes | selectattr('type', 'equalto', 'event') | list | length }}</div>
+                    <div class="stat-label">Events</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">{{ nodes | selectattr('type', 'equalto', 'instrument') | list | length }}</div>
+                    <div class="stat-label">Instruments</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">{{ edges | length }}</div>
+                    <div class="stat-label">Models</div>
+                </div>
+            </div>
+
+            <h4 style="margin-top: 1.5rem; margin-bottom: 0.5rem; color: var(--text-primary);">Available Actions</h4>
+            <ul class="feature-list">
+                <li class="feature-background">Click edges to view model details</li>
+                <li class="feature-active">Click events to run parameter perturbation</li>
+                <li class="feature-background">Hover elements for descriptions</li>
+            </ul>
+        </div>
+    </main>
+
+    <script>
+        function handleNodeClick(nodeName, nodeType) {
+            if (nodeType === 'event') {
+                window.location.href = `/perturbation/${nodeName}`;
+            }
+        }
+        
+        function showEdgeDetails(edgeId) {
+            window.location.href = `/slot/${edgeId}`;
+        }
+        
+        // Add hover tooltips
+        document.querySelectorAll('.node-group').forEach(node => {
+            node.addEventListener('mouseenter', function() {
+                const nodeData = {{ nodes | tojson }};
+                const nodeName = this.querySelector('.node-text').textContent.trim();
+                const nodeInfo = nodeData.find(n => n.name === nodeName);
+                if (nodeInfo) {
+                    this.setAttribute('title', nodeInfo.description);
+                }
+            });
+        });
+        
+        document.querySelectorAll('.edge').forEach(edge => {
+            edge.addEventListener('mouseenter', function() {
+                const edgeData = {{ edges | tojson }};
+                const edgeId = this.getAttribute('data-edge');
+                const edgeInfo = edgeData.find(e => e.id === edgeId);
+                if (edgeInfo) {
+                    this.setAttribute('title', `${edgeInfo.description}\nActive: ${edgeInfo.active_factor}`);
+                }
+            });
+        });
+    </script>
+</body>
+</html>

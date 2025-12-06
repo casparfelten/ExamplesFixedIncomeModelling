@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ event_type }} Perturbation - QSIG</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        .layout-container {
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 2rem;
+            height: calc(100vh - 100px);
+        }
+        
+        .graph-section {
+            background-color: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1.5rem;
+            overflow: auto;
+        }
+        
+        .controls-section {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+            overflow: auto;
+        }
+        
+        .graph-svg {
+            width: 100%;
+            height: 400px;
+            background-color: var(--bg-primary);
+            border-radius: 4px;
+        }
+        
+        .slider-input {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: var(--bg-tertiary);
+            outline: none;
+            -webkit-appearance: none;
+            margin: 0.5rem 0;
+        }
+        
+        .slider-input::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: var(--accent-blue);
+            cursor: pointer;
+        }
+        
+        .slider-input::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: var(--accent-blue);
+            cursor: pointer;
+            border: none;
+        }
+        
+        .value-display {
+            font-family: monospace;
+            color: var(--accent-blue);
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+        
+        .delta-label {
+            color: var(--accent-yellow);
+            font-weight: 600;
+        }
+        
+        .background-label {
+            color: var(--accent-green);
+            font-weight: 600;
+        }
+        
+        .node-result {
+            fill: var(--bg-tertiary);
+            stroke-width: 3;
+        }
+        
+        .node-normal {
+            stroke: var(--accent-green);
+        }
+        
+        .node-warning {
+            stroke: var(--accent-yellow);
+        }
+        
+        .node-danger {
+            stroke: var(--accent-red);
+        }
+        
+        .result-text {
+            fill: var(--text-primary);
+            font-family: monospace;
+            font-size: 10px;
+            text-anchor: middle;
+            font-weight: 600;
+        }
+        
+        @media (max-width: 1024px) {
+            .layout-container {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <nav class="nav">
+        <h1><a href="/" style="color: var(--text-primary);">QSIG Macro Graph Explorer</a></h1>
+        <div class="subtitle">Parameter Perturbation: {{ event_type }} → Live Graph</div>
+    </nav>
+
+    <main class="main">
+        <div class="layout-container">
+            <!-- Live Graph Section -->
+            <div class="graph-section">
+                <h3>Live Prediction Graph</h3>
+                <div class="meta">Real-time probabilities update as you adjust parameters below</div>
+                
+                <svg class="graph-svg" id="live-graph">
+                    <!-- Event node (left) -->
+                    <g class="node-group">
+                        <rect class="node-event" 
+                              x="50" y="150" 
+                              width="100" height="60" 
+                              rx="8">
+                        </rect>
+                        <text class="node-text" 
+                              x="100" y="185">
+                            {{ event_type }}
+                        </text>
+                        <text class="result-text" 
+                              x="100" y="200" id="event-delta">
+                            Δ: +0.0%
+                        </text>
+                    </g>
+
+                    <!-- Instrument nodes (right) with prediction results -->
+                    {% for slot in slots %}
+                    <g class="instrument-group" data-slot="{{ slot.slot_id }}">
+                        <!-- Connection line -->
+                        <line class="edge" 
+                              x1="150" y1="180"
+                              x2="280" y2="{{ 80 + loop.index0 * 90 }}">
+                        </line>
+                        
+                        <!-- Instrument node -->
+                        <rect class="node-result node-normal" 
+                              x="280" y="{{ 50 + loop.index0 * 90 }}" 
+                              width="120" height="60" 
+                              rx="8"
+                              id="node-{{ slot.to_node }}">
+                        </rect>
+                        <text class="node-text" 
+                              x="340" y="{{ 75 + loop.index0 * 90 }}">
+                            {{ slot.to_node }}
+                        </text>
+                        <text class="result-text" 
+                              x="340" y="{{ 90 + loop.index0 * 90 }}" 
+                              id="prob-{{ slot.to_node }}">
+                            0.0%
+                        </text>
+                        <text class="result-text" 
+                              x="340" y="{{ 105 + loop.index0 * 90 }}" 
+                              id="flag-{{ slot.to_node }}">
+                            Normal
+                        </text>
+                    </g>
+                    {% endfor %}
+                </svg>
+            </div>
+
+            <!-- Controls Section -->
+            <div class="controls-section">
+                <!-- Event Delta Control -->
+                <div class="side-panel">
+                    <h3><span class="delta-label">{{ event_type }} Announcement Impact</span></h3>
+                    <div class="meta">Market reaction to surprise in {{ first_slot.active_factor }} (not level, but shock)</div>
+                    
+                    <div class="form-group">
+                        <label>{{ first_slot.active_factor }} <span class="value-display" id="active-display">+0.50</span></label>
+                        <input type="range" 
+                               class="slider-input" 
+                               id="active-slider" 
+                               min="0" max="2" step="0.01" value="0.5">
+                        <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--text-muted);">
+                            <span>0.0 (no shock)</span>
+                            <span>2.0 (massive)</span>
+                        </div>
+                    </div>
+                    
+                    <div class="preset-buttons">
+                        <button type="button" class="preset-btn" onclick="setActiveValue(0.1)">Minor Surprise</button>
+                        <button type="button" class="preset-btn" onclick="setActiveValue(0.3)">Moderate Miss</button>
+                        <button type="button" class="preset-btn" onclick="setActiveValue(0.5)">Big Surprise</button>
+                        <button type="button" class="preset-btn" onclick="setActiveValue(0.8)">Major Shock</button>
+                        <button type="button" class="preset-btn" onclick="setActiveValue(1.2)">Crisis Level</button>
+                    </div>
+                </div>
+
+                <!-- Background Market Conditions -->
+                <details class="side-panel">
+                    <summary style="cursor: pointer; margin-bottom: 1rem;">
+                        <h3 style="display: inline;"><span class="background-label">Market Context</span></h3>
+                        <span style="font-size: 0.8rem; color: var(--text-muted); margin-left: 0.5rem;">(Advanced)</span>
+                    </summary>
+                    <div class="meta">Background conditions when announcement hits (auto-pulled, adjust if needed)</div>
+                    
+                    {% for feature in first_slot.background_features %}
+                    <div class="form-group">
+                        <label>{{ feature }} <span class="value-display" id="bg-display-{{ loop.index0 }}">{{ "%.3f"|format(first_slot.feature_medians[feature] or 0.0) }}</span></label>
+                        <input type="range" 
+                               class="slider-input" 
+                               id="bg-slider-{{ loop.index0 }}" 
+                               min="{{ (first_slot.feature_medians[feature] or 0.0) * 0.3 }}" 
+                               max="{{ (first_slot.feature_medians[feature] or 0.0) * 3.0 }}" 
+                               step="0.001" 
+                               value="{{ first_slot.feature_medians[feature] or 0.0 }}"
+                               data-median="{{ first_slot.feature_medians[feature] or 0.0 }}">
+                        <div style="display: flex; justify-content: space-between; font-size: 0.7rem; color: var(--text-muted);">
+                            <span>Low</span>
+                            <span style="color: var(--accent-green);">Median</span>
+                            <span>High</span>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </details>
+
+                <!-- Quick Actions -->
+                <div class="side-panel">
+                    <h3>Quick Actions</h3>
+                    
+                    <button type="button" class="btn btn-secondary" onclick="resetToMedians()" style="width: 100%; margin-bottom: 0.5rem;">
+                        Reset to Median Conditions
+                    </button>
+                    
+                    <button type="button" class="btn btn-secondary" onclick="setStressScenario()" style="width: 100%; margin-bottom: 0.5rem;">
+                        Apply Stress Scenario
+                    </button>
+                    
+                    <a href="/" class="btn btn-primary" style="width: 100%; text-align: center; text-decoration: none;">
+                        Back to Graph Overview
+                    </a>
+                </div>
+
+                <!-- Results Summary -->
+                <div class="side-panel" id="results-summary">
+                    <h3>Prediction Summary</h3>
+                    <div id="summary-content">
+                        <div style="text-align: center; color: var(--text-muted);">
+                            Adjust parameters to see predictions
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const defaultValues = {{ first_slot.feature_medians | tojson }};
+        const eventType = '{{ event_type }}';
+        const activeFactorName = '{{ first_slot.active_factor }}';
+        const backgroundFeatures = {{ first_slot.background_features | tojson }};
+
+        // Update active value display and run predictions
+        function updateActiveValue() {
+            const slider = document.getElementById('active-slider');
+            const display = document.getElementById('active-display');
+            const eventDelta = document.getElementById('event-delta');
+            
+            const value = parseFloat(slider.value);
+            display.textContent = `+${value.toFixed(2)}`;
+            
+            // Show it's a surprise/shock, not an absolute level
+            if (value === 0) {
+                eventDelta.textContent = `No Surprise`;
+            } else if (value < 0.3) {
+                eventDelta.textContent = `Minor Miss`;
+            } else if (value < 0.6) {
+                eventDelta.textContent = `Big Surprise`;
+            } else {
+                eventDelta.textContent = `Major Shock`;
+            }
+            
+            runPredictions();
+        }
+
+        // Update background value display and run predictions
+        function updateBackgroundValue(index) {
+            const slider = document.getElementById(`bg-slider-${index}`);
+            const display = document.getElementById(`bg-display-${index}`);
+            
+            const value = parseFloat(slider.value);
+            display.textContent = value.toFixed(3);
+            
+            runPredictions();
+        }
+
+        function setActiveValue(value) {
+            document.getElementById('active-slider').value = value;
+            updateActiveValue();
+        }
+
+        function resetToMedians() {
+            // Reset active factor
+            setActiveValue(defaultValues[activeFactorName] || 0.5);
+            
+            // Reset background factors
+            backgroundFeatures.forEach((feature, i) => {
+                const slider = document.getElementById(`bg-slider-${i}`);
+                slider.value = defaultValues[feature] || 0.0;
+                updateBackgroundValue(i);
+            });
+        }
+
+        function setStressScenario() {
+            // Large shock
+            setActiveValue(1.0);
+            
+            // High volatility, tight conditions
+            backgroundFeatures.forEach((feature, i) => {
+                const slider = document.getElementById(`bg-slider-${i}`);
+                const median = parseFloat(slider.dataset.median);
+                
+                // Set to high values for stress
+                if (feature.includes('vol') || feature.includes('spread')) {
+                    slider.value = median * 1.5;
+                } else if (feature.includes('fed_funds')) {
+                    slider.value = median * 1.3;
+                } else {
+                    slider.value = median * 1.2;
+                }
+                updateBackgroundValue(i);
+            });
+        }
+
+        function runPredictions() {
+            const activeValue = parseFloat(document.getElementById('active-slider').value);
+            const backgroundValues = backgroundFeatures.map((feature, i) => 
+                parseFloat(document.getElementById(`bg-slider-${i}`).value)
+            );
+
+            const data = {
+                event_type: eventType,
+                active_value: activeValue,
+                background_values: backgroundValues
+            };
+
+            fetch('/api/predict', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    updateGraph(result.results);
+                    updateSummary(result.results);
+                } else {
+                    console.error('Prediction error:', result.error);
+                }
+            })
+            .catch(error => {
+                console.error('Network error:', error);
+            });
+        }
+
+        function updateGraph(results) {
+            results.forEach(result => {
+                const node = document.getElementById(`node-${result.to_node}`);
+                const probText = document.getElementById(`prob-${result.to_node}`);
+                const flagText = document.getElementById(`flag-${result.to_node}`);
+                
+                if (node && probText && flagText) {
+                    // Update probability display
+                    const probPercent = (result.probability * 100).toFixed(1);
+                    probText.textContent = `${probPercent}%`;
+                    
+                    // Update flag
+                    flagText.textContent = result.flag_large_move ? 'LARGE MOVE' : 'Normal';
+                    
+                    // Update node color based on probability
+                    node.classList.remove('node-normal', 'node-warning', 'node-danger');
+                    if (result.probability >= 0.5) {
+                        node.classList.add('node-danger');
+                    } else if (result.probability >= 0.3) {
+                        node.classList.add('node-warning');
+                    } else {
+                        node.classList.add('node-normal');
+                    }
+                }
+            });
+        }
+
+        function updateSummary(results) {
+            const summaryContent = document.getElementById('summary-content');
+            
+            let html = '';
+            let highRiskCount = 0;
+            
+            results.forEach(result => {
+                const probPercent = (result.probability * 100).toFixed(1);
+                const riskLevel = result.probability >= 0.5 ? 'HIGH' : 
+                                 result.probability >= 0.3 ? 'MEDIUM' : 'LOW';
+                const riskColor = result.probability >= 0.5 ? 'var(--accent-red)' : 
+                                 result.probability >= 0.3 ? 'var(--accent-yellow)' : 'var(--accent-green)';
+                
+                if (result.probability >= 0.5) highRiskCount++;
+                
+                html += `
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem; padding: 0.5rem; background: var(--bg-tertiary); border-radius: 4px;">
+                        <span style="font-size: 0.8rem;">${result.to_node}</span>
+                        <span style="color: ${riskColor}; font-weight: 600; font-size: 0.8rem;">${probPercent}% (${riskLevel})</span>
+                    </div>
+                `;
+            });
+            
+            const alertStyle = highRiskCount > 0 ? 'color: var(--accent-red); font-weight: 600;' : 'color: var(--accent-green);';
+            html = `<div style="${alertStyle} text-align: center; margin-bottom: 1rem; font-size: 0.9rem;">
+                        ${highRiskCount > 0 ? `⚠️ ${highRiskCount} HIGH RISK instruments` : '✅ All instruments normal risk'}
+                    </div>` + html;
+            
+            summaryContent.innerHTML = html;
+        }
+
+        // Event listeners
+        document.getElementById('active-slider').addEventListener('input', updateActiveValue);
+        
+        backgroundFeatures.forEach((feature, i) => {
+            document.getElementById(`bg-slider-${i}`).addEventListener('input', () => updateBackgroundValue(i));
+        });
+
+        // Initial setup
+        window.addEventListener('load', () => {
+            updateActiveValue();
+            backgroundFeatures.forEach((feature, i) => updateBackgroundValue(i));
+            setTimeout(runPredictions, 100);
+        });
+    </script>
+</body>
+</html>

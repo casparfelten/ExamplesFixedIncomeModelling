@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ event_type }} Perturbation - QSIG</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <nav class="nav">
+        <h1><a href="/" style="color: var(--text-primary);">QSIG Macro Graph Explorer</a></h1>
+        <div class="subtitle">Parameter Perturbation: {{ event_type }}</div>
+    </nav>
+
+    <main class="main">
+        <div class="side-panel">
+            <h3>{{ event_type }} Event Parameters</h3>
+            <div class="meta">
+                Adjust event parameters to see predicted impact on connected instruments.
+                Real-time predictions show probability of large moves.
+            </div>
+
+            <form id="perturbation-form">
+                <!-- Active Factor -->
+                {% set first_slot = slots[0] %}
+                <div class="form-group">
+                    <label for="active-value">{{ first_slot.active_factor }} (Active Factor)</label>
+                    <div class="form-row">
+                        <input type="number" 
+                               id="active-value" 
+                               name="active-value" 
+                               class="form-input" 
+                               value="{{ first_slot.feature_medians[first_slot.active_factor] or 0.5 }}"
+                               step="0.01" 
+                               min="0" 
+                               max="2">
+                        <div class="preset-buttons">
+                            <button type="button" class="preset-btn" onclick="setActiveValue(0.2)">Small</button>
+                            <button type="button" class="preset-btn" onclick="setActiveValue(0.5)">Medium</button>
+                            <button type="button" class="preset-btn" onclick="setActiveValue(0.8)">Large</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Background Features -->
+                <h4 style="margin-top: 2rem; margin-bottom: 1rem; color: var(--text-primary);">Background Market Conditions</h4>
+                {% for feature in first_slot.background_features %}
+                <div class="form-group">
+                    <label for="bg-{{ loop.index0 }}">{{ feature }}</label>
+                    <input type="number" 
+                           id="bg-{{ loop.index0 }}" 
+                           name="bg-{{ loop.index0 }}" 
+                           class="form-input" 
+                           value="{{ first_slot.feature_medians[feature] or 0.0 }}"
+                           step="0.01">
+                </div>
+                {% endfor %}
+
+                <div style="margin-top: 2rem;">
+                    <button type="submit" class="btn btn-primary" id="predict-btn">
+                        Run Predictions
+                    </button>
+                    <button type="button" class="btn btn-secondary" onclick="resetToDefaults()">
+                        Reset to Defaults
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <div class="results-container" id="results-container">
+            <div class="side-panel">
+                <h3>Prediction Results</h3>
+                <div class="meta">
+                    Adjust parameters above to see updated predictions for all connected instruments.
+                </div>
+                <div id="results-content">
+                    <div style="text-align: center; color: var(--text-muted); margin: 2rem 0;">
+                        Submit form to see predictions
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const defaultValues = {{ first_slot.feature_medians | tojson }};
+        const eventType = '{{ event_type }}';
+        const activeFactorName = '{{ first_slot.active_factor }}';
+
+        function setActiveValue(value) {
+            document.getElementById('active-value').value = value;
+            runPredictions();
+        }
+
+        function resetToDefaults() {
+            document.getElementById('active-value').value = defaultValues[activeFactorName] || 0.5;
+            
+            {% for feature in first_slot.background_features %}
+            document.getElementById('bg-{{ loop.index0 }}').value = defaultValues['{{ feature }}'] || 0.0;
+            {% endfor %}
+            
+            runPredictions();
+        }
+
+        function runPredictions() {
+            const form = document.getElementById('perturbation-form');
+            const formData = new FormData(form);
+            
+            const data = {
+                event_type: eventType,
+                active_value: formData.get('active-value'),
+                background_values: [
+                    {% for feature in first_slot.background_features %}
+                    formData.get('bg-{{ loop.index0 }}'){{ ',' if not loop.last }}
+                    {% endfor %}
+                ]
+            };
+
+            // Show loading state
+            const resultsContent = document.getElementById('results-content');
+            const predictBtn = document.getElementById('predict-btn');
+            
+            predictBtn.innerHTML = 'Running Predictions <span class="spinner"></span>';
+            predictBtn.disabled = true;
+
+            fetch('/api/predict', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    displayResults(result.results);
+                } else {
+                    resultsContent.innerHTML = `<div style="color: var(--accent-red); text-align: center;">Error: ${result.error}</div>`;
+                }
+            })
+            .catch(error => {
+                resultsContent.innerHTML = `<div style="color: var(--accent-red); text-align: center;">Network error: ${error}</div>`;
+            })
+            .finally(() => {
+                predictBtn.innerHTML = 'Run Predictions';
+                predictBtn.disabled = false;
+            });
+        }
+
+        function displayResults(results) {
+            const resultsContent = document.getElementById('results-content');
+            
+            if (results.length === 0) {
+                resultsContent.innerHTML = '<div style="text-align: center; color: var(--text-muted);">No results found</div>';
+                return;
+            }
+
+            let html = '';
+            results.forEach(result => {
+                const probClass = result.probability >= 0.5 ? 'prob-danger' : 
+                                 result.probability >= 0.3 ? 'prob-warning' : 'prob-normal';
+                const flagClass = result.flag_large_move ? 'flag-large' : 'flag-normal';
+                const flagText = result.flag_large_move ? 'LARGE MOVE' : 'Normal';
+                
+                html += `
+                    <div class="result-item">
+                        <div class="result-info">
+                            <h4>${result.to_node}</h4>
+                            <div class="meta">Threshold: ${result.threshold.toFixed(4)}</div>
+                        </div>
+                        <div class="result-probability">
+                            <div class="prob-value ${probClass}">${(result.probability * 100).toFixed(1)}%</div>
+                            <div class="${flagClass}">${flagText}</div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            resultsContent.innerHTML = html;
+        }
+
+        // Form submission handler
+        document.getElementById('perturbation-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            runPredictions();
+        });
+
+        // Auto-run predictions on input change
+        document.querySelectorAll('input').forEach(input => {
+            input.addEventListener('input', function() {
+                clearTimeout(this.autoRunTimer);
+                this.autoRunTimer = setTimeout(() => {
+                    runPredictions();
+                }, 500); // Debounce 500ms
+            });
+        });
+
+        // Run initial predictions on page load
+        window.addEventListener('load', () => {
+            setTimeout(runPredictions, 100);
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ slot.slot_id }} - QSIG Model Details</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <nav class="nav">
+        <h1><a href="/" style="color: var(--text-primary);">QSIG Macro Graph Explorer</a></h1>
+        <div class="subtitle">Model Details: {{ slot.slot_id }}</div>
+    </nav>
+
+    <main class="main">
+        <div class="side-panel">
+            <h3>{{ slot.from_node }} → {{ slot.to_node }}</h3>
+            <div class="meta">{{ slot.description }}</div>
+            
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <div class="stat-value">{{ "%.3f"|format(slot.stats.auc) }}</div>
+                    <div class="stat-label">AUC</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">{{ "%.1f"|format(slot.stats.fn_rate * 100) }}%</div>
+                    <div class="stat-label">FN Rate</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">{{ "%.1f"|format(slot.stats.fp_rate * 100) }}%</div>
+                    <div class="stat-label">FP Rate</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">{{ "%.1f"|format(slot.stats.base_rate * 100) }}%</div>
+                    <div class="stat-label">Base Rate</div>
+                </div>
+            </div>
+
+            <h4 style="margin-top: 2rem; margin-bottom: 0.5rem; color: var(--text-primary);">Model Configuration</h4>
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <div class="stat-value">{{ slot.model_type }}</div>
+                    <div class="stat-label">Model Type</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">{{ "%.1f"|format(slot.fn_constraint * 100) }}%</div>
+                    <div class="stat-label">FN Constraint</div>
+                </div>
+            </div>
+            
+            <h4 style="margin-top: 2rem; margin-bottom: 0.5rem; color: var(--text-primary);">Confusion Matrix</h4>
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <div class="stat-value">{{ slot.stats.tp }}</div>
+                    <div class="stat-label">True Positive</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">{{ slot.stats.fp }}</div>
+                    <div class="stat-label">False Positive</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">{{ slot.stats.fn }}</div>
+                    <div class="stat-label">False Negative</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">{{ slot.stats.tn }}</div>
+                    <div class="stat-label">True Negative</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="side-panel" style="margin-top: 2rem;">
+            <h3>Feature Specification</h3>
+            
+            <h4 style="margin-bottom: 0.5rem; color: var(--text-primary);">Active Factor</h4>
+            <ul class="feature-list">
+                <li class="feature-active">
+                    {{ slot.active_factor }}
+                    {% if slot.feature_medians[slot.active_factor] %}
+                    <span style="float: right; color: var(--text-muted);">
+                        median: {{ "%.3f"|format(slot.feature_medians[slot.active_factor]) }}
+                    </span>
+                    {% endif %}
+                </li>
+            </ul>
+            
+            <h4 style="margin-top: 1.5rem; margin-bottom: 0.5rem; color: var(--text-primary);">Background Features</h4>
+            <ul class="feature-list">
+                {% for feature in slot.background_features %}
+                <li class="feature-background">
+                    {{ feature }}
+                    {% if slot.feature_medians[feature] %}
+                    <span style="float: right; color: var(--text-muted);">
+                        median: {{ "%.3f"|format(slot.feature_medians[feature]) }}
+                    </span>
+                    {% endif %}
+                </li>
+                {% endfor %}
+            </ul>
+            
+            <div style="margin-top: 2rem;">
+                <a href="/perturbation/{{ slot.from_node }}" class="btn btn-primary">
+                    Run Parameter Perturbation
+                </a>
+                <a href="/" class="btn btn-secondary" style="margin-left: 1rem;">
+                    Back to Graph
+                </a>
+            </div>
+        </div>
+    </main>
+</body>
+</html>
