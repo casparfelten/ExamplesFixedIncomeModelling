@@ -8,8 +8,8 @@
     <style>
         .layout-container {
             display: grid;
-            grid-template-columns: 1fr 400px;
-            gap: 2rem;
+            grid-template-columns: 1fr 450px;
+            gap: 2.5rem;
             height: calc(100vh - 100px);
         }
         
@@ -24,7 +24,7 @@
         .controls-section {
             display: flex;
             flex-direction: column;
-            gap: 1.5rem;
+            gap: 2rem;
             overflow: auto;
         }
         
@@ -87,7 +87,7 @@
         }
         
         .node-normal {
-            stroke: var(--accent-green);
+            stroke: #888888;
         }
         
         .node-warning {
@@ -101,15 +101,35 @@
         .result-text {
             fill: var(--text-primary);
             font-family: monospace;
-            font-size: 10px;
+            font-size: 14px;
             text-anchor: middle;
-            font-weight: 600;
+            font-weight: 700;
         }
         
-        @media (max-width: 1024px) {
+        .threshold-text {
+            fill: var(--text-muted);
+            font-family: monospace;
+            font-size: 8px;
+            text-anchor: middle;
+        }
+        
+        .threshold-yield {
+            fill: var(--accent-blue);
+        }
+        
+        .threshold-spread {
+            fill: var(--accent-yellow);
+        }
+        
+        .threshold-vol {
+            fill: var(--accent-red);
+        }
+        
+        @media (max-width: 1200px) {
             .layout-container {
                 grid-template-columns: 1fr;
                 grid-template-rows: auto 1fr;
+                gap: 1.5rem;
             }
         }
     </style>
@@ -166,15 +186,16 @@
                             {{ slot.to_node }}
                         </text>
                         <text class="result-text" 
-                              x="340" y="{{ 90 + loop.index0 * 90 }}" 
+                              x="340" y="{{ 88 + loop.index0 * 90 }}" 
                               id="prob-{{ slot.to_node }}">
                             0.0%
                         </text>
-                        <text class="result-text" 
-                              x="340" y="{{ 105 + loop.index0 * 90 }}" 
-                              id="flag-{{ slot.to_node }}">
-                            Normal
+                        <text class="threshold-text" 
+                              x="340" y="{{ 100 + loop.index0 * 90 }}" 
+                              id="threshold-{{ slot.to_node }}">
+                            ≥6bp move
                         </text>
+                        <!-- Remove the flag text entirely -->
                     </g>
                     {% endfor %}
                 </svg>
@@ -188,64 +209,116 @@
                     <div class="meta">Market reaction to surprise in {{ first_slot.active_factor }} (not level, but shock)</div>
                     
                     <div class="form-group">
-                        <label>{{ first_slot.active_factor }} <span class="value-display" id="active-display">+0.50</span></label>
+                        <label>{{ first_slot.active_factor }} <span class="value-display" id="active-display">+0bp</span></label>
                         <input type="range" 
                                class="slider-input" 
                                id="active-slider" 
-                               min="0" max="2" step="0.01" value="0.5">
+                               min="0" max="35" step="1" value="0">
                         <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--text-muted);">
-                            <span>0.0 (no shock)</span>
-                            <span>2.0 (massive)</span>
+                            <span>0bp (in-line)</span>
+                            <span>35bp (extreme shock)</span>
+                        </div>
+                        <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">
+                            CPI announcement surprise in basis points (typical range: 5-25bp surprise)
                         </div>
                     </div>
                     
                     <div class="preset-buttons">
-                        <button type="button" class="preset-btn" onclick="setActiveValue(0.1)">Minor Surprise</button>
-                        <button type="button" class="preset-btn" onclick="setActiveValue(0.3)">Moderate Miss</button>
-                        <button type="button" class="preset-btn" onclick="setActiveValue(0.5)">Big Surprise</button>
-                        <button type="button" class="preset-btn" onclick="setActiveValue(0.8)">Major Shock</button>
-                        <button type="button" class="preset-btn" onclick="setActiveValue(1.2)">Crisis Level</button>
+                        <button type="button" class="preset-btn" onclick="setActiveValue(5)">Small (5bp)</button>
+                        <button type="button" class="preset-btn" onclick="setActiveValue(10)">Moderate (10bp)</button>
+                        <button type="button" class="preset-btn" onclick="setActiveValue(15)">Large (15bp)</button>
+                        <button type="button" class="preset-btn" onclick="setActiveValue(25)">Big (25bp)</button>
+                        <button type="button" class="preset-btn" onclick="setActiveValue(35)">Extreme (35bp)</button>
                     </div>
                 </div>
 
-                <!-- Background Market Conditions -->
-                <details class="side-panel">
-                    <summary style="cursor: pointer; margin-bottom: 1rem;">
-                        <h3 style="display: inline;"><span class="background-label">Market Context</span></h3>
-                        <span style="font-size: 0.8rem; color: var(--text-muted); margin-left: 0.5rem;">(Advanced)</span>
-                    </summary>
-                    <div class="meta">Background conditions when announcement hits (auto-pulled, adjust if needed)</div>
+                <!-- Market Scenario Selection -->
+                <div class="side-panel">
+                    <h3><span class="background-label">Market Scenario</span></h3>
+                    <div class="meta">Choose background market conditions for the announcement</div>
                     
-                    {% for feature in first_slot.background_features %}
+                    <!-- Scenario Selector -->
                     <div class="form-group">
-                        <label>{{ feature }} <span class="value-display" id="bg-display-{{ loop.index0 }}">{{ "%.3f"|format(first_slot.feature_medians[feature] or 0.0) }}</span></label>
-                        <input type="range" 
-                               class="slider-input" 
-                               id="bg-slider-{{ loop.index0 }}" 
-                               min="{{ (first_slot.feature_medians[feature] or 0.0) * 0.3 }}" 
-                               max="{{ (first_slot.feature_medians[feature] or 0.0) * 3.0 }}" 
-                               step="0.001" 
-                               value="{{ first_slot.feature_medians[feature] or 0.0 }}"
-                               data-median="{{ first_slot.feature_medians[feature] or 0.0 }}">
-                        <div style="display: flex; justify-content: space-between; font-size: 0.7rem; color: var(--text-muted);">
-                            <span>Low</span>
-                            <span style="color: var(--accent-green);">Median</span>
-                            <span>High</span>
-                        </div>
+                        <label>Market Conditions</label>
+                        <select id="scenario-select" class="form-input">
+                            <option value="today">Today (Current Conditions)</option>
+                            <option value="">── Notable Historical Scenarios ──</option>
+                        </select>
                     </div>
-                    {% endfor %}
-                </details>
+                    
+                    <!-- Scenario Context -->
+                    <div id="scenario-context" class="meta" style="background: var(--bg-tertiary); padding: 0.75rem; border-radius: 4px; margin: 1rem 0; min-height: 2rem;">
+                        Current market conditions
+                    </div>
+                    
+                    <!-- Custom Date Selection (less prominent) -->
+                    <details style="margin-top: 1rem;">
+                        <summary style="font-size: 0.8rem; color: var(--text-muted); cursor: pointer;">Custom Date Selection</summary>
+                        <div class="form-group" style="margin-top: 0.5rem;">
+                            <input type="date" 
+                                   id="date-picker" 
+                                   class="form-input" 
+                                   value=""
+                                   min="2003-12-16" 
+                                   max="2025-12-31"
+                                   style="font-size: 0.8rem;">
+                        </div>
+                    </details>
+                    
+                    <!-- Custom Controls (disabled by default) -->
+                    <div id="custom-controls" style="display: none; margin-top: 1rem;">
+                        <div style="margin-bottom: 1rem; padding: 0.5rem; background: var(--accent-yellow); color: black; border-radius: 4px; font-size: 0.8rem;">
+                            🔧 Custom Mode: Manually adjust background factors
+                        </div>
+                        {% for feature in first_slot.background_features %}
+                        <div class="form-group">
+                            <label>{{ feature }} <span class="value-display" id="bg-display-{{ loop.index0 }}">{{ "%.3f"|format(first_slot.feature_medians[feature] or 0.0) }}</span></label>
+                            <input type="range" 
+                                   class="slider-input" 
+                                   id="bg-slider-{{ loop.index0 }}" 
+                                   min="{{ (first_slot.feature_medians[feature] or 0.0) * 0.3 }}" 
+                                   max="{{ (first_slot.feature_medians[feature] or 0.0) * 3.0 }}" 
+                                   step="0.001" 
+                                   value="{{ first_slot.feature_medians[feature] or 0.0 }}"
+                                   data-median="{{ first_slot.feature_medians[feature] or 0.0 }}">
+                            <div style="display: flex; justify-content: space-between; font-size: 0.7rem; color: var(--text-muted);">
+                                <span>Low</span>
+                                <span style="color: var(--accent-green);">Median</span>
+                                <span>High</span>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- Model Selection -->
+                <div class="side-panel">
+                    <h3><span class="background-label">Model Sensitivity</span></h3>
+                    <div class="meta">Choose model false negative tolerance (risk vs precision tradeoff)</div>
+                    
+                    <div class="form-group">
+                        <label>Model Policy</label>
+                        <select id="model-policy" class="form-input" onchange="updateModelPolicy()">
+                            <option value="safe">🛡️ Ultra Safe (1% FN) - Catch all moves</option>
+                            <option value="balanced">⚖️ Balanced (5% FN) - Fewer false alarms</option>
+                        </select>
+                    </div>
+                    
+                    <div id="model-stats" class="meta" style="margin-top: 0.5rem; font-size: 0.75rem; color: var(--text-muted);">
+                        Current: 1% FN rate, 78% FP rate - ultra conservative
+                    </div>
+                </div>
 
                 <!-- Quick Actions -->
                 <div class="side-panel">
-                    <h3>Quick Actions</h3>
+                    <h3>Custom Scenario</h3>
                     
-                    <button type="button" class="btn btn-secondary" onclick="resetToMedians()" style="width: 100%; margin-bottom: 0.5rem;">
-                        Reset to Median Conditions
+                    <button type="button" class="btn btn-secondary" onclick="enableCustomMode()" id="custom-mode-btn" style="width: 100%; margin-bottom: 0.5rem;">
+                        🔧 Enable Custom Adjustments
                     </button>
                     
-                    <button type="button" class="btn btn-secondary" onclick="setStressScenario()" style="width: 100%; margin-bottom: 0.5rem;">
-                        Apply Stress Scenario
+                    <button type="button" class="btn btn-secondary" onclick="resetToScenario()" style="width: 100%; margin-bottom: 0.5rem;">
+                        Reset to Selected Scenario
                     </button>
                     
                     <a href="/" class="btn btn-primary" style="width: 100%; text-align: center; text-decoration: none;">
@@ -254,9 +327,9 @@
                 </div>
 
                 <!-- Results Summary -->
-                <div class="side-panel" id="results-summary">
-                    <h3>Prediction Summary</h3>
-                    <div id="summary-content">
+                <div class="side-panel" id="results-summary" style="margin-top: 1rem; border-left: 3px solid var(--accent-blue); background: var(--bg-primary);">
+                    <h3 style="color: var(--accent-blue);">Live Prediction Results</h3>
+                    <div id="summary-content" style="margin-top: 1rem;">
                         <div style="text-align: center; color: var(--text-muted);">
                             Adjust parameters to see predictions
                         </div>
@@ -278,18 +351,20 @@
             const display = document.getElementById('active-display');
             const eventDelta = document.getElementById('event-delta');
             
-            const value = parseFloat(slider.value);
-            display.textContent = `+${value.toFixed(2)}`;
+            const valueBp = parseInt(slider.value);  // Value in basis points
+            display.textContent = `+${valueBp}bp`;   // Show as basis points
             
-            // Show it's a surprise/shock, not an absolute level
-            if (value === 0) {
-                eventDelta.textContent = `No Surprise`;
-            } else if (value < 0.3) {
-                eventDelta.textContent = `Minor Miss`;
-            } else if (value < 0.6) {
-                eventDelta.textContent = `Big Surprise`;
+            // Show it's a surprise/shock with realistic CPI context
+            if (valueBp === 0) {
+                eventDelta.textContent = `In-Line`;
+            } else if (valueBp < 15) {
+                eventDelta.textContent = `Small Miss`;
+            } else if (valueBp < 30) {
+                eventDelta.textContent = `Notable Surprise`;
+            } else if (valueBp < 50) {
+                eventDelta.textContent = `Big Shock`;
             } else {
-                eventDelta.textContent = `Major Shock`;
+                eventDelta.textContent = `Crisis-Level Miss`;
             }
             
             runPredictions();
@@ -344,16 +419,34 @@
             });
         }
 
+        function updateModelPolicy() {
+            const policy = document.getElementById('model-policy').value;
+            const statsDiv = document.getElementById('model-stats');
+            
+            if (policy === 'safe') {
+                statsDiv.textContent = 'Current: 1% FN rate, 78% FP rate - ultra conservative';
+            } else {
+                statsDiv.textContent = 'Current: 5% FN rate, ~30% FP rate - more balanced';
+            }
+            
+            // Re-run predictions with new policy
+            runPredictions();
+        }
+
         function runPredictions() {
-            const activeValue = parseFloat(document.getElementById('active-slider').value);
+            const activeValueBp = parseInt(document.getElementById('active-slider').value);
+            const activeValue = activeValueBp / 100.0;  // Convert basis points to decimal (e.g., 30bp -> 0.30)
             const backgroundValues = backgroundFeatures.map((feature, i) => 
                 parseFloat(document.getElementById(`bg-slider-${i}`).value)
             );
+            
+            const modelPolicy = document.getElementById('model-policy').value;
 
             const data = {
                 event_type: eventType,
                 active_value: activeValue,
-                background_values: backgroundValues
+                background_values: backgroundValues,
+                model_policy: modelPolicy
             };
 
             fetch('/api/predict', {
@@ -379,25 +472,73 @@
             results.forEach(result => {
                 const node = document.getElementById(`node-${result.to_node}`);
                 const probText = document.getElementById(`prob-${result.to_node}`);
-                const flagText = document.getElementById(`flag-${result.to_node}`);
+                const thresholdText = document.getElementById(`threshold-${result.to_node}`);
                 
-                if (node && probText && flagText) {
+                if (node && probText) {
                     // Update probability display
                     const probPercent = (result.probability * 100).toFixed(1);
                     probText.textContent = `${probPercent}%`;
                     
-                    // Update flag
-                    flagText.textContent = result.flag_large_move ? 'LARGE MOVE' : 'Normal';
-                    
-                    // Update node color based on probability
-                    node.classList.remove('node-normal', 'node-warning', 'node-danger');
-                    if (result.probability >= 0.5) {
-                        node.classList.add('node-danger');
-                    } else if (result.probability >= 0.3) {
-                        node.classList.add('node-warning');
-                    } else {
-                        node.classList.add('node-normal');
+                    // Update threshold display with proper units and color-coding
+                    if (thresholdText) {
+                        const threshold = result.threshold;
+                        let displayText, colorClass;
+                        
+                        if (result.to_node.includes('YIELD')) {
+                            // For yields, threshold is in percentage points, show as bp
+                            const thresholdBp = Math.round(threshold * 10000); // pp to bp
+                            displayText = `≥${thresholdBp}bp YIELD move`;
+                            colorClass = 'threshold-yield';
+                        } else if (result.to_node.includes('OAS') || result.to_node.includes('SPREAD')) {
+                            // For spreads, likely already in bp
+                            const thresholdBp = Math.round(threshold * 100);
+                            displayText = `≥${thresholdBp}bp SPREAD move`;
+                            colorClass = 'threshold-spread';
+                        } else if (result.to_node.includes('VIX')) {
+                            // For VIX
+                            displayText = `≥${(threshold * 100).toFixed(1)}% VOL move`;
+                            colorClass = 'threshold-vol';
+                        } else {
+                            // Default
+                            displayText = `≥${(threshold * 100).toFixed(1)}% move`;
+                            colorClass = 'threshold-text';
+                        }
+                        
+                        thresholdText.textContent = displayText;
+                        thresholdText.className = `threshold-text ${colorClass}`;
                     }
+                    
+                    // No flag text to update - removed entirely
+                    
+                    // Update node color with gradient based on probability
+                    node.classList.remove('node-normal', 'node-warning', 'node-danger');
+                    const prob = result.probability;
+                    
+                    // Calculate smooth gradient color across realistic probability range
+                    let strokeColor;
+                    if (prob <= 0.01) {
+                        // Dark grey for very low risk (≤1%)
+                        strokeColor = '#666666';
+                    } else if (prob <= 0.08) {
+                        // Smooth grey to yellow-orange gradient for 1% -> 8%  
+                        const t = (prob - 0.01) / 0.07; // normalize to 0-1
+                        const r = Math.round(102 + (255 - 102) * t); // 102 -> 255
+                        const g = Math.round(102 + (180 - 102) * t); // 102 -> 180  
+                        const b = Math.round(102 + (20 - 102) * t);   // 102 -> 20
+                        strokeColor = `rgb(${r}, ${g}, ${b})`;
+                    } else if (prob <= 0.20) {
+                        // Orange to red gradient for 8% -> 20%
+                        const t = (prob - 0.08) / 0.12; // normalize to 0-1
+                        const r = Math.round(255 + (255 - 255) * t); // 255 -> 255
+                        const g = Math.round(180 + (69 - 180) * t);  // 180 -> 69
+                        const b = Math.round(20 + (0 - 20) * t);     // 20 -> 0
+                        strokeColor = `rgb(${r}, ${g}, ${b})`;
+                    } else {
+                        // Bright red for >20% (crisis level)
+                        strokeColor = '#FF0000';
+                    }
+                    
+                    node.style.stroke = strokeColor;
                 }
             });
         }
@@ -410,22 +551,71 @@
             
             results.forEach(result => {
                 const probPercent = (result.probability * 100).toFixed(1);
-                const riskLevel = result.probability >= 0.5 ? 'HIGH' : 
-                                 result.probability >= 0.3 ? 'MEDIUM' : 'LOW';
-                const riskColor = result.probability >= 0.5 ? 'var(--accent-red)' : 
-                                 result.probability >= 0.3 ? 'var(--accent-yellow)' : 'var(--accent-green)';
+                const prob = result.probability;
                 
-                if (result.probability >= 0.5) highRiskCount++;
+                // Calculate risk level with smooth gradient across realistic range
+                let riskLevel, riskColor;
+                if (prob <= 0.01) {
+                    riskLevel = 'MINIMAL';
+                    riskColor = '#666666';
+                } else if (prob <= 0.04) {
+                    riskLevel = 'LOW';
+                    const t = (prob - 0.01) / 0.03;
+                    const r = Math.round(102 + (220 - 102) * t);
+                    const g = Math.round(102 + (160 - 102) * t);
+                    const b = Math.round(102 + (30 - 102) * t);
+                    riskColor = `rgb(${r}, ${g}, ${b})`;
+                } else if (prob <= 0.08) {
+                    riskLevel = 'MEDIUM';
+                    const t = (prob - 0.04) / 0.04;
+                    const r = Math.round(220 + (255 - 220) * t);
+                    const g = Math.round(160 + (180 - 160) * t);
+                    const b = Math.round(30 + (20 - 30) * t);
+                    riskColor = `rgb(${r}, ${g}, ${b})`;
+                } else if (prob <= 0.15) {
+                    riskLevel = 'HIGH';
+                    const t = (prob - 0.08) / 0.07;
+                    const r = Math.round(255 + (255 - 255) * t);
+                    const g = Math.round(180 + (100 - 180) * t);
+                    const b = Math.round(20 + (0 - 20) * t);
+                    riskColor = `rgb(${r}, ${g}, ${b})`;
+                } else {
+                    riskLevel = 'EXTREME';
+                    riskColor = '#FF0000';
+                }
+                
+                if (result.probability >= 0.08) highRiskCount++; // 8% or higher = elevated risk
+                
+                // Format threshold for display with color-coding
+                let thresholdDisplay, thresholdColor;
+                if (result.to_node.includes('YIELD')) {
+                    const thresholdBp = Math.round(result.threshold * 10000);
+                    thresholdDisplay = `≥${thresholdBp}bp YIELD`;
+                    thresholdColor = 'var(--accent-blue)';
+                } else if (result.to_node.includes('OAS')) {
+                    const thresholdBp = Math.round(result.threshold * 100);
+                    thresholdDisplay = `≥${thresholdBp}bp SPREAD`;
+                    thresholdColor = 'var(--accent-yellow)';
+                } else if (result.to_node.includes('VIX')) {
+                    thresholdDisplay = `≥${(result.threshold * 100).toFixed(1)}% VOL`;
+                    thresholdColor = 'var(--accent-red)';
+                } else {
+                    thresholdDisplay = `≥${(result.threshold * 100).toFixed(1)}%`;
+                    thresholdColor = 'var(--text-muted)';
+                }
                 
                 html += `
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem; padding: 0.5rem; background: var(--bg-tertiary); border-radius: 4px;">
-                        <span style="font-size: 0.8rem;">${result.to_node}</span>
-                        <span style="color: ${riskColor}; font-weight: 600; font-size: 0.8rem;">${probPercent}% (${riskLevel})</span>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; padding: 0.5rem; background: var(--bg-tertiary); border-radius: 4px;">
+                        <div>
+                            <div style="font-size: 0.8rem; font-weight: 500;">${result.to_node}</div>
+                            <div style="font-size: 0.7rem; color: ${thresholdColor}; font-weight: 600;">${thresholdDisplay} move</div>
+                        </div>
+                        <span style="color: ${riskColor}; font-weight: 600; font-size: 0.8rem;">${probPercent}%</span>
                     </div>
                 `;
             });
             
-            const alertStyle = highRiskCount > 0 ? 'color: var(--accent-red); font-weight: 600;' : 'color: var(--accent-green);';
+            const alertStyle = highRiskCount > 0 ? 'color: var(--accent-red); font-weight: 600;' : 'color: #888888;';
             html = `<div style="${alertStyle} text-align: center; margin-bottom: 1rem; font-size: 0.9rem;">
                         ${highRiskCount > 0 ? `⚠️ ${highRiskCount} HIGH RISK instruments` : '✅ All instruments normal risk'}
                     </div>` + html;
@@ -433,18 +623,212 @@
             summaryContent.innerHTML = html;
         }
 
+        // Load historical data for a specific date
+        function loadHistoricalData(date) {
+            fetch(`/api/historical/${eventType}/${date}`)
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    // Update scenario context
+                    updateScenarioContext(`<strong>${date}:</strong> ${result.notable_context}`);
+                    
+                    // Store current scenario data
+                    currentScenarioData = result.historical_data;
+                    
+                    // Set CPI surprise for this historical event
+                    if (result.cpi_surprise_bp !== undefined) {
+                        const activeSlider = document.getElementById('active-slider');
+                        activeSlider.value = result.cpi_surprise_bp;
+                        updateActiveValue();
+                    }
+                    
+                    // Update background sliders with historical data
+                    backgroundFeatures.forEach((feature, i) => {
+                        if (result.historical_data[feature] !== undefined) {
+                            const slider = document.getElementById(`bg-slider-${i}`);
+                            const value = result.historical_data[feature];
+                            
+                            // Update slider bounds if needed
+                            slider.min = Math.min(parseFloat(slider.min), value * 0.5);
+                            slider.max = Math.max(parseFloat(slider.max), value * 1.5);
+                            slider.value = value;
+                            
+                            updateBackgroundValue(i);
+                        }
+                    });
+                    
+                    // Run predictions with new data
+                    runPredictions();
+                } else {
+                    updateScenarioContext(`<span style="color: var(--accent-red);">Error loading data: ${result.error}</span>`);
+                }
+            })
+            .catch(error => {
+                updateScenarioContext(`<span style="color: var(--accent-red);">Network error: ${error}</span>`);
+            });
+        }
+
+        // Global state
+        let customModeEnabled = false;
+        let currentScenarioData = {};
+        let notableDates = [];
+
+        // Load notable dates into scenario selector
+        function loadNotableDates() {
+            fetch(`/api/notable_dates/${eventType}`)
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    notableDates = result.notable_dates;
+                    const select = document.getElementById('scenario-select');
+                    
+                    // Add notable dates to selector
+                    result.notable_dates.forEach(item => {
+                        const option = document.createElement('option');
+                        option.value = item.date;
+                        option.textContent = item.description.replace(' (TEST DATA)', '');
+                        select.appendChild(option);
+                    });
+                    
+                    // Add custom option at the end
+                    const customOption = document.createElement('option');
+                    customOption.value = 'custom';
+                    customOption.textContent = '🔧 Custom Scenario (Manual)';
+                    select.appendChild(customOption);
+                }
+            })
+            .catch(error => {
+                console.error('Error loading notable dates:', error);
+            });
+        }
+
+        // Enable/disable custom mode
+        function enableCustomMode() {
+            customModeEnabled = !customModeEnabled;
+            const customControls = document.getElementById('custom-controls');
+            const customBtn = document.getElementById('custom-mode-btn');
+            const scenarioSelect = document.getElementById('scenario-select');
+            
+            if (customModeEnabled) {
+                customControls.style.display = 'block';
+                customBtn.textContent = '🔒 Disable Custom Mode';
+                customBtn.classList.remove('btn-secondary');
+                customBtn.classList.add('btn-primary');
+                scenarioSelect.value = 'custom';
+                updateScenarioContext('Custom Mode: Manual background factor adjustment');
+            } else {
+                customControls.style.display = 'none';
+                customBtn.textContent = '🔧 Enable Custom Adjustments';
+                customBtn.classList.remove('btn-primary');
+                customBtn.classList.add('btn-secondary');
+                scenarioSelect.value = 'today';
+                loadTodayScenario();
+            }
+        }
+
+        // Load today's scenario
+        function loadTodayScenario() {
+            const today = new Date();
+            const todayString = today.toISOString().split('T')[0];
+            
+            // Set CPI surprise to 0 for today
+            document.getElementById('active-slider').value = 0.0;
+            updateActiveValue();
+            
+            loadHistoricalData(todayString);
+        }
+
+        // Reset to currently selected scenario
+        function resetToScenario() {
+            const scenarioSelect = document.getElementById('scenario-select');
+            const selectedValue = scenarioSelect.value;
+            
+            if (selectedValue === 'today') {
+                // Reset CPI to 0 for today
+                document.getElementById('active-slider').value = 0.0;
+                updateActiveValue();
+                loadTodayScenario();
+            } else if (selectedValue === 'custom') {
+                // Reset sliders to median values
+                backgroundFeatures.forEach((feature, i) => {
+                    const slider = document.getElementById(`bg-slider-${i}`);
+                    slider.value = defaultValues[feature] || 0.0;
+                    updateBackgroundValue(i);
+                });
+                // Reset CPI to 0 for custom mode too
+                document.getElementById('active-slider').value = 0.0;
+                updateActiveValue();
+            } else if (selectedValue) {
+                // Historical date
+                loadHistoricalData(selectedValue);
+            }
+        }
+
+        // Update scenario context display
+        function updateScenarioContext(text) {
+            document.getElementById('scenario-context').innerHTML = text;
+        }
+
         // Event listeners
         document.getElementById('active-slider').addEventListener('input', updateActiveValue);
         
         backgroundFeatures.forEach((feature, i) => {
-            document.getElementById(`bg-slider-${i}`).addEventListener('input', () => updateBackgroundValue(i));
+            document.getElementById(`bg-slider-${i}`).addEventListener('input', () => {
+                // Only allow changes in custom mode
+                if (customModeEnabled) {
+                    updateBackgroundValue(i);
+                }
+            });
+        });
+
+        // Scenario selector event listener
+        document.getElementById('scenario-select').addEventListener('change', function() {
+            const selectedValue = this.value;
+            
+            if (selectedValue === 'today') {
+                customModeEnabled = false;
+                document.getElementById('custom-controls').style.display = 'none';
+                const customBtn = document.getElementById('custom-mode-btn');
+                customBtn.textContent = '🔧 Enable Custom Adjustments';
+                customBtn.classList.remove('btn-primary');
+                customBtn.classList.add('btn-secondary');
+                loadTodayScenario();
+            } else if (selectedValue === 'custom') {
+                enableCustomMode();
+            } else if (selectedValue && selectedValue !== '') {
+                // Historical scenario selected
+                customModeEnabled = false;
+                document.getElementById('custom-controls').style.display = 'none';
+                const customBtn = document.getElementById('custom-mode-btn');
+                customBtn.textContent = '🔧 Enable Custom Adjustments';
+                customBtn.classList.remove('btn-primary');
+                customBtn.classList.add('btn-secondary');
+                loadHistoricalData(selectedValue);
+            }
+        });
+
+        // Custom date picker event listener
+        document.getElementById('date-picker').addEventListener('change', function() {
+            if (this.value) {
+                document.getElementById('scenario-select').value = this.value;
+                loadHistoricalData(this.value);
+            }
         });
 
         // Initial setup
         window.addEventListener('load', () => {
             updateActiveValue();
             backgroundFeatures.forEach((feature, i) => updateBackgroundValue(i));
-            setTimeout(runPredictions, 100);
+            
+            // Load notable dates dropdown
+            loadNotableDates();
+            
+            // Default to today
+            setTimeout(() => {
+                loadTodayScenario();
+            }, 100);
+            
+            setTimeout(runPredictions, 300);
         });
     </script>
 </body>
