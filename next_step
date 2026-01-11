@@ -1,0 +1,12 @@
+
+integrate news articles
+classify news articles
+then look at historical macro data
+and see shock effects they have
+
+add as a new NODE, like geopolitical event, policy event, etc. 
+The data source is AI classification of news articles (type-casting). Then we check for similar ones in the past
+Then we bring that data back into an AI for final judgement
+
+use a news database, not normal. Also can use cheaper models perhaps
+can use the cnn one. Hve headers, enough to roughly categorise. Then our actual one can have more detail, but for the classifying + training its sufficient. That covers geo/macro news
