@@ -43,6 +43,201 @@ from src.models.event_grid_search import run_full_grid_search, find_best_configs
 # MAPPING DEFINITIONS
 # ============================================================================
 
+def prepare_cpi_yield_dataset():
+    """Load CPI -> 10Y yield event dataset."""
+    from src.data.fred_loader import load_series
+    from src.data.merge_panel import build_fed_panel
+    from src.data.inflation_announcements_loader import load_inflation_announcements
+
+    panel = build_fed_panel()
+    panel['date'] = pd.to_datetime(panel['date'])
+    panel = panel.sort_values('date').reset_index(drop=True)
+
+    cpi_dates = load_inflation_announcements()
+    cpi_dates['release_date'] = pd.to_datetime(cpi_dates['release_date'])
+
+    cpi_raw = load_series("CPIAUCSL").reset_index()
+    cpi_raw.columns = ['date', 'cpi_value']
+    cpi_raw['date'] = pd.to_datetime(cpi_raw['date'])
+    cpi_raw['year_month'] = cpi_raw['date'].dt.to_period('M')
+    cpi_monthly = cpi_raw.groupby('year_month')['cpi_value'].last().reset_index()
+    cpi_monthly['data_period'] = cpi_monthly['year_month'].astype(str)
+    cpi_dict = dict(zip(cpi_monthly['data_period'], cpi_monthly['cpi_value']))
+
+    def get_prev_month(period):
+        year, month = map(int, period.split('-'))
+        if month == 1:
+            return f"{year - 1}-12"
+        return f"{year}-{month - 1:02d}"
+
+    features = [
+        "cpi_shock_abs",
+        "yield_vol_10y",
+        "slope_10y_2y",
+        "fed_funds",
+        "expinf_1y",
+        "y_10y_before",
+        "stlfsi",
+    ]
+
+    events = []
+    for idx, ann in cpi_dates.iterrows():
+        ann_date = ann['release_date']
+        data_period = ann['data_period']
+
+        ann_rows = panel[panel['date'] == ann_date]
+        prev_rows = panel[panel['date'] < ann_date].tail(1)
+
+        if ann_rows.empty or prev_rows.empty:
+            continue
+
+        ann_row = ann_rows.iloc[0]
+        prev_row = prev_rows.iloc[0]
+
+        y_after = ann_row.get('y_10y', np.nan)
+        y_before = prev_row.get('y_10y', np.nan)
+
+        if pd.isna(y_before) or pd.isna(y_after):
+            continue
+
+        y_change = y_after - y_before
+
+        prev_period = get_prev_month(data_period)
+        cpi_current = cpi_dict.get(data_period)
+        cpi_prev = cpi_dict.get(prev_period)
+        cpi_shock = (cpi_current - cpi_prev) if cpi_current and cpi_prev else None
+
+        recent = panel[panel['date'] < ann_date].tail(20)
+        yield_vol_10y = np.nan
+        if len(recent) > 5 and 'y_10y' in recent.columns:
+            vals = recent['y_10y'].dropna().values
+            if len(vals) > 5:
+                yield_vol_10y = np.std(np.diff(vals))
+
+        events.append({
+            'date': ann_date,
+            'y_change': y_change,
+            'cpi_shock': cpi_shock,
+            'cpi_shock_abs': abs(cpi_shock) if cpi_shock else np.nan,
+            'yield_vol_10y': yield_vol_10y,
+            'slope_10y_2y': prev_row.get('slope_10y_2y', np.nan),
+            'fed_funds': prev_row.get('fed_funds', np.nan),
+            'expinf_1y': prev_row.get('expinf_1y', np.nan),
+            'y_10y_before': y_before,
+            'stlfsi': prev_row.get('stlfsi', np.nan),
+        })
+
+    df = pd.DataFrame(events)
+    df = df.dropna(subset=['y_change', 'cpi_shock_abs'])
+    df = df.sort_values('date').reset_index(drop=True)
+
+    n_test = int(len(df) * 0.30)
+    train_df = df.iloc[:-n_test].copy()
+    test_df = df.iloc[-n_test:].copy()
+
+    return train_df, test_df, features, "y_change", "CPI", "YIELD_10Y"
+
+
+def prepare_cpi_predicted_dataset():
+    """Load CPI_PREDICTED -> 10Y yield event dataset."""
+    from src.data.fred_loader import load_series
+    from src.data.merge_panel import build_fed_panel
+    from src.data.inflation_announcements_loader import load_inflation_announcements
+
+    panel = build_fed_panel()
+    panel['date'] = pd.to_datetime(panel['date'])
+    panel = panel.sort_values('date').reset_index(drop=True)
+
+    cpi_dates = load_inflation_announcements()
+    cpi_dates['release_date'] = pd.to_datetime(cpi_dates['release_date'])
+
+    cpi_raw = load_series("CPIAUCSL").reset_index()
+    cpi_raw.columns = ['date', 'cpi_value']
+    cpi_raw['date'] = pd.to_datetime(cpi_raw['date'])
+    cpi_raw['year_month'] = cpi_raw['date'].dt.to_period('M')
+    cpi_monthly = cpi_raw.groupby('year_month')['cpi_value'].last().reset_index()
+    cpi_monthly['data_period'] = cpi_monthly['year_month'].astype(str)
+    cpi_dict = dict(zip(cpi_monthly['data_period'], cpi_monthly['cpi_value']))
+
+    def get_prev_month(period):
+        year, month = map(int, period.split('-'))
+        if month == 1:
+            return f"{year - 1}-12"
+        return f"{year}-{month - 1:02d}"
+
+    features = [
+        "expinf_change",
+        "yield_vol_10y",
+        "slope_10y_2y",
+        "fed_funds",
+        "expinf_1y",
+        "y_10y_before",
+        "stlfsi",
+    ]
+
+    events = []
+    for idx, ann in cpi_dates.iterrows():
+        ann_date = ann['release_date']
+        data_period = ann['data_period']
+
+        ann_rows = panel[panel['date'] == ann_date]
+        prev_rows = panel[panel['date'] < ann_date].tail(1)
+
+        if ann_rows.empty or prev_rows.empty:
+            continue
+
+        ann_row = ann_rows.iloc[0]
+        prev_row = prev_rows.iloc[0]
+
+        expinf_after = ann_row.get('expinf_1y', np.nan)
+        expinf_before = prev_row.get('expinf_1y', np.nan)
+        y_after = ann_row.get('y_10y', np.nan)
+        y_before = prev_row.get('y_10y', np.nan)
+
+        if pd.isna(expinf_before) or pd.isna(expinf_after) or pd.isna(y_before) or pd.isna(y_after):
+            continue
+
+        expinf_change = expinf_after - expinf_before
+        y_change = y_after - y_before
+
+        prev_period = get_prev_month(data_period)
+        cpi_current = cpi_dict.get(data_period)
+        cpi_prev = cpi_dict.get(prev_period)
+        cpi_shock = (cpi_current - cpi_prev) if cpi_current and cpi_prev else None
+
+        recent = panel[panel['date'] < ann_date].tail(20)
+        yield_vol_10y = np.nan
+        if len(recent) > 5 and 'y_10y' in recent.columns:
+            vals = recent['y_10y'].dropna().values
+            if len(vals) > 5:
+                yield_vol_10y = np.std(np.diff(vals))
+
+        events.append({
+            'date': ann_date,
+            'y_change': y_change,
+            'expinf_change': expinf_change,
+            'cpi_shock': cpi_shock,
+            'cpi_shock_abs': abs(cpi_shock) if cpi_shock else np.nan,
+            'yield_vol_10y': yield_vol_10y,
+            'slope_10y_2y': prev_row.get('slope_10y_2y', np.nan),
+            'fed_funds': prev_row.get('fed_funds', np.nan),
+            'expinf_1y': expinf_before,
+            'y_10y_before': y_before,
+            'stlfsi': prev_row.get('stlfsi', np.nan),
+        })
+
+    df = pd.DataFrame(events)
+    df = df.dropna(subset=['y_change', 'expinf_change', 'cpi_shock_abs'])
+    df = df.sort_values('date').reset_index(drop=True)
+
+    n_test = int(len(df) * 0.30)
+    train_df = df.iloc[:-n_test].copy()
+    test_df = df.iloc[-n_test:].copy()
+
+    return train_df, test_df, features, "y_change", "CPI_PREDICTED", "YIELD_10Y"
+
+
+
 MAPPINGS = {
     "CPI->HY_OAS": {
         "event": "CPI",
@@ -77,6 +272,40 @@ MAPPINGS = {
         ],
         "thresholds": [1.0, 1.5, 2.0, 2.5, 3.0, 3.5],
         "loader": "load_unemp_vix_dataset",
+    },
+    "CPI->YIELD_10Y": {
+        "event": "CPI",
+        "instrument": "YIELD_10Y",
+        "target_col": "y_change",
+        "active_factor": "cpi_shock_abs",
+        "features": [
+            "cpi_shock_abs",
+            "yield_vol_10y",
+            "slope_10y_2y",
+            "fed_funds",
+            "expinf_1y",
+            "y_10y_before",
+            "stlfsi",
+        ],
+        "thresholds": [0.05, 0.10, 0.15, 0.20, 0.25],
+        "loader": "load_cpi_yield_dataset",
+    },
+    "CPI_PREDICTED->YIELD_10Y": {
+        "event": "CPI_PREDICTED",
+        "instrument": "YIELD_10Y",
+        "target_col": "y_change",
+        "active_factor": "expinf_change",
+        "features": [
+            "expinf_change",
+            "yield_vol_10y",
+            "slope_10y_2y",
+            "fed_funds",
+            "expinf_1y",
+            "y_10y_before",
+            "stlfsi",
+        ],
+        "thresholds": [0.05, 0.10, 0.15, 0.20],
+        "loader": "load_cpi_predicted_yield_dataset",
     },
 }
 
@@ -276,6 +505,10 @@ def run_search_for_mapping(
         train_df, test_df = load_cpi_hy_dataset()
     elif loader_name == "load_unemp_vix_dataset":
         train_df, test_df = load_unemp_vix_dataset()
+    elif loader_name == "load_cpi_yield_dataset":
+        train_df, test_df, *_ = prepare_cpi_yield_dataset()
+    elif loader_name == "load_cpi_predicted_yield_dataset":
+        train_df, test_df, *_ = prepare_cpi_predicted_dataset()
     else:
         raise ValueError(f"Unknown loader: {loader_name}")
     
@@ -376,4 +609,3 @@ def main():
 
 if __name__ == "__main__":
     sys.exit(main())
-

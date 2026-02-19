@@ -21,6 +21,8 @@ nodes:
   events:
     - name: CPI
       description: "Consumer Price Index release"
+    - name: CPI_PREDICTED
+      description: "St. Louis Fed expected 1-year inflation"
     - name: UNEMPLOYMENT
       description: "BLS Employment Situation"
   
@@ -62,6 +64,50 @@ edge_slots:
     # Which edge to use by default
     default_edge: fn_5pct
 
+  CPI->YIELD_10Y:
+    from_node: CPI
+    to_node: YIELD_10Y
+    description: "CPI announcement → large 10Y yield move probability"
+    target_unit: bp
+
+    feature_spec:
+      active_factor: cpi_shock_abs
+      background_features:
+        - yield_vol_10y
+        - slope_10y_2y
+        - fed_funds
+        - expinf_1y
+        - y_10y_before
+        - stlfsi
+
+    edges:
+      fn_1pct: cpi_10y_rf_shallow_w15_20bp
+      fn_5pct: cpi_10y_rf_shallow_w15_20bp
+
+    default_edge: fn_5pct
+
+  CPI_PREDICTED->YIELD_10Y:
+    from_node: CPI_PREDICTED
+    to_node: YIELD_10Y
+    description: "Inflation expectation update → large 10Y move probability"
+    target_unit: bp
+
+    feature_spec:
+      active_factor: expinf_change
+      background_features:
+        - yield_vol_10y
+        - slope_10y_2y
+        - fed_funds
+        - expinf_1y
+        - y_10y_before
+        - stlfsi
+
+    edges:
+      fn_1pct: cpi_predicted_10y_logreg_balanced_15bp
+      fn_5pct: cpi_predicted_10y_logreg_balanced_15bp
+
+    default_edge: fn_5pct
+
   UNEMP->VIX:
     from_node: UNEMPLOYMENT
     to_node: VIX
@@ -90,4 +136,3 @@ edge_slots:
 #   to_node: YIELD_2Y
 #   description: "CPI → 2Y yield large move"
 #   edges: {}
-

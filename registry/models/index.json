@@ -1,5 +1,7 @@
 {
   "cpi_hy_rf_shallow_w20_20bp": "models/cpi_hy_rf_shallow_w20_20bp",
   "unemp_vix_extratrees_w20_3p5pt": "models/unemp_vix_extratrees_w20_3p5pt",
-  "unemp_vix_rf_shallow_w50_1p5pt": "models/unemp_vix_rf_shallow_w50_1p5pt"
+  "unemp_vix_rf_shallow_w50_1p5pt": "models/unemp_vix_rf_shallow_w50_1p5pt",
+  "cpi_10y_rf_shallow_w15_20bp": "models/cpi_10y_rf_shallow_w15_20bp",
+  "cpi_predicted_10y_logreg_balanced_15bp": "models/cpi_predicted_10y_logreg_balanced_15bp"
 }

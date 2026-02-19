@@ -23,6 +23,7 @@ FRED_SERIES = [
     "WTREGEN",   # Treasury General Account (daily)
     "RRPONTSYD", # Overnight Reverse Repurchase Agreements (daily)
     "WALCL",     # Total assets of the Federal Reserve (weekly)
+    "EXPINF1YR", # 1-Year Expected Inflation (daily)
     # Market stress indicators
     "BAMLH0A0HYM2",  # ICE BofA US High Yield Index Option-Adjusted Spread (daily)
     "VIXCLS",        # CBOE Volatility Index: VIX (daily)
@@ -63,6 +64,7 @@ FRED_COLUMN_MAPPING = {
     "WTREGEN": "treasury_general_account",
     "RRPONTSYD": "on_rrp_balance",
     "WALCL": "total_assets",
+    "EXPINF1YR": "expinf_1y",
     "BAMLH0A0HYM2": "hy_oas",      # High-yield credit spread (credit stress indicator)
     "VIXCLS": "vix",               # CBOE VIX (equity volatility, proxy for market stress)
     "STLFSI4": "stlfsi",           # St. Louis Fed Financial Stress Index
@@ -80,6 +82,7 @@ FRED_SERIES_METADATA = {
     "WTREGEN": {"unit": "millions_usd", "frequency": "daily"},
     "RRPONTSYD": {"unit": "millions_usd", "frequency": "daily"},
     "WALCL": {"unit": "millions_usd", "frequency": "weekly"},
+    "EXPINF1YR": {"unit": "percent", "frequency": "daily"},
     # Market stress indicators
     "BAMLH0A0HYM2": {"unit": "percent", "frequency": "daily"},   # HY OAS spread in percentage points
     "VIXCLS": {"unit": "index", "frequency": "daily"},           # VIX index value
@@ -106,4 +109,3 @@ POLYMARKET_EVENT_MAPPING = {
     #     "resolution_date": "2024-12-31",
     # }
 }
-

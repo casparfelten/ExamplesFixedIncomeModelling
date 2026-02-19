@@ -241,6 +241,7 @@ def prepare_event_data(
         unemployment = ann_row.get('unemployment', np.nan)
         fed_funds = ann_row.get('fed_funds', np.nan)
         slope = ann_row.get('slope_10y_2y', np.nan)
+        expinf_1y = ann_row.get('expinf_1y', np.nan)
         
         # Get market stress indicators (new background features)
         vix = ann_row.get('vix', np.nan)
@@ -283,6 +284,7 @@ def prepare_event_data(
             'unemployment': unemployment,
             'fed_funds': fed_funds,
             'slope_10y_2y': slope,
+            'expinf_1y': expinf_1y,
             # Interaction terms - how CPI shock interacts with market conditions
             'cpi_shock_x_fed_funds': cpi_shock_mom * fed_funds if pd.notna(cpi_shock_mom) and pd.notna(fed_funds) else np.nan,
             'cpi_shock_x_unemployment': cpi_shock_mom * unemployment if pd.notna(cpi_shock_mom) and pd.notna(unemployment) else np.nan,
@@ -391,4 +393,3 @@ def create_train_test_split(
     logger.info(f"Test date range: {test_df['date'].min()} to {test_df['date'].max()}")
     
     return train_df, test_df
-

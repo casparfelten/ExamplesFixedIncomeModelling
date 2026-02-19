@@ -1,0 +1,55 @@
+{
+  "model_id": "cpi_10y_rf_shallow_w15_20bp",
+  "model_type": "RF_shallow",
+  "weight": 15,
+  "features": [
+    "cpi_shock_abs",
+    "yield_vol_10y",
+    "slope_10y_2y",
+    "fed_funds",
+    "expinf_1y",
+    "y_10y_before",
+    "stlfsi"
+  ],
+  "feature_medians": {
+    "cpi_shock_abs": 0.20000000000000284,
+    "yield_vol_10y": 0.04253725758142482,
+    "slope_10y_2y": 1.4499999999999993,
+    "fed_funds": 4.55,
+    "expinf_1y": 2.8042649,
+    "y_10y_before": 5.94,
+    "stlfsi": -0.3093
+  },
+  "target_event": "CPI",
+  "target_instrument": "YIELD_10Y",
+  "target_col": "y_change",
+  "large_move_threshold": 0.2,
+  "large_move_definition": "abs(y_change) >= 0.2",
+  "prob_cutoff": 0.15,
+  "train_period": [
+    "1972-07-21",
+    "2003-01-16"
+  ],
+  "test_period": [
+    "2003-02-21",
+    "2025-10-24"
+  ],
+  "n_train": 633,
+  "n_test": 270,
+  "n_test_pos": 2,
+  "n_test_neg": 268,
+  "tp": 2,
+  "fp": 60,
+  "fn": 0,
+  "tn": 208,
+  "auc": 0.8190298507462686,
+  "fn_rate": 0.0,
+  "fp_rate": 0.22388059701492538,
+  "tn_fp_ratio": 3.466666666666667,
+  "created_at": "2026-01-12T23:50:49.542796Z",
+  "created_by": "promote_model.py",
+  "source": "grid_search_2026-01-12",
+  "notes": "n_test_pos=2",
+  "model_file": "model.pkl",
+  "scaler_file": "scaler.pkl"
+}

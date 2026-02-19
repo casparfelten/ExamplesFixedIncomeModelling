@@ -73,6 +73,7 @@ class CPIBondYieldModel:
             'unemployment',
             'fed_funds',
             'slope_10y_2y',
+            'expinf_1y',
             # Interaction terms - how CPI shock interacts with market conditions
             'cpi_shock_x_fed_funds',  # CPI shock × Fed funds rate
             'cpi_shock_x_unemployment',  # CPI shock × Unemployment
@@ -525,6 +526,7 @@ class TwoStageCPIBondYieldModel:
             'unemployment',      # Labor market
             'fed_funds',        # Monetary policy
             'slope_10y_2y',     # Yield curve shape (term structure)
+            'expinf_1y',        # Inflation expectations
         ]
     
     def _get_shock_features(self) -> List[str]:
@@ -1111,6 +1113,7 @@ class RegimeSwitchingCPIBondYieldModel:
             'unemployment',      # Labor market
             'fed_funds',        # Monetary policy
             'slope_10y_2y',     # Yield curve shape
+            'expinf_1y',        # Inflation expectations
         ]
     
     def _get_shock_features(self) -> List[str]:
@@ -1122,6 +1125,7 @@ class RegimeSwitchingCPIBondYieldModel:
             'yield_volatility',  # Market volatility
             'fed_funds',         # Monetary policy context
             'unemployment',      # Economic context
+            'expinf_1y',         # Inflation expectations
         ]
     
     def _create_regime_labels(self, df: pd.DataFrame) -> np.ndarray:
@@ -1615,4 +1619,3 @@ class RegimeSwitchingCPIBondYieldModel:
                 'n_samples': len(y_true_raw),
                 **regime_metrics
             }
-

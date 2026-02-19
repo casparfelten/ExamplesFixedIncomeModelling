@@ -8,6 +8,11 @@
       "name": "CPI",
       "description": "Consumer Price Index release"
     },
+    "CPI_PREDICTED": {
+      "type": "event",
+      "name": "CPI_PREDICTED",
+      "description": "St. Louis Fed expected 1-year inflation"
+    },
     "UNEMPLOYMENT": {
       "type": "event",
       "name": "UNEMPLOYMENT",
@@ -116,8 +121,8 @@
             "precision": 0.21428571428571427,
             "tn_fp_ratio": 7.818181818181818
           },
-          "version": "2025-12-05_cpi_hy_rf_shallow_w20_20bp",
-          "created_at": "2025-12-05T22:18:23.030603Z",
+          "version": "2026-01-12_cpi_hy_rf_shallow_w20_20bp",
+          "created_at": "2026-01-13T00:03:50.493456Z",
           "created_by": "build_graph.py",
           "notes": "n_test_pos=3",
           "model_params": {
@@ -189,8 +194,8 @@
             "precision": 0.21428571428571427,
             "tn_fp_ratio": 7.818181818181818
           },
-          "version": "2025-12-05_cpi_hy_rf_shallow_w20_20bp",
-          "created_at": "2025-12-05T22:18:23.030804Z",
+          "version": "2026-01-12_cpi_hy_rf_shallow_w20_20bp",
+          "created_at": "2026-01-13T00:03:50.493600Z",
           "created_by": "build_graph.py",
           "notes": "n_test_pos=3",
           "model_params": {
@@ -208,6 +213,354 @@
         }
       },
       "default_edge_id": "CPI->HY_OAS__fn_5pct__cpi_hy_rf_shallow_w20_20bp"
+    },
+    "CPI->YIELD_10Y": {
+      "slot_id": "CPI->YIELD_10Y",
+      "from_node": {
+        "type": "event",
+        "name": "CPI",
+        "description": "Consumer Price Index release"
+      },
+      "to_node": {
+        "type": "instrument",
+        "name": "YIELD_10Y",
+        "description": "10-Year Treasury yield"
+      },
+      "description": "CPI announcement \u2192 large 10Y yield move probability",
+      "feature_spec": {
+        "active_factor": "cpi_shock_abs",
+        "background_features": [
+          "yield_vol_10y",
+          "slope_10y_2y",
+          "fed_funds",
+          "expinf_1y",
+          "y_10y_before",
+          "stlfsi"
+        ]
+      },
+      "edges": {
+        "CPI->YIELD_10Y__fn_1pct__cpi_10y_rf_shallow_w15_20bp": {
+          "edge_id": "CPI->YIELD_10Y__fn_1pct__cpi_10y_rf_shallow_w15_20bp",
+          "slot_id": "CPI->YIELD_10Y",
+          "from_node": {
+            "type": "event",
+            "name": "CPI",
+            "description": "Consumer Price Index release"
+          },
+          "to_node": {
+            "type": "instrument",
+            "name": "YIELD_10Y",
+            "description": "10-Year Treasury yield"
+          },
+          "model_type": "RF_shallow",
+          "model_location": "/home/bitzaven/CodingProjects/ExamplesFixedIncomeModelling/registry/models/models/cpi_10y_rf_shallow_w15_20bp/model.pkl",
+          "active_factor": "cpi_shock_abs",
+          "background_features": [
+            "yield_vol_10y",
+            "slope_10y_2y",
+            "fed_funds",
+            "expinf_1y",
+            "y_10y_before",
+            "stlfsi"
+          ],
+          "target_series": "YIELD_10Y",
+          "target_unit": "bp",
+          "large_move_threshold": {
+            "value": 0.2,
+            "definition": "abs(y_change) >= 0.2"
+          },
+          "fn_constraint": 0.01,
+          "prob_cutoff": 0.15,
+          "threshold_selection_method": "manual promotion from grid_search_2026-01-12",
+          "stats": {
+            "train_period": [
+              "1972-07-21",
+              "2003-01-16"
+            ],
+            "test_period": [
+              "2003-02-21",
+              "2025-10-24"
+            ],
+            "n_test_events": 270,
+            "n_test_pos": 2,
+            "n_test_neg": 268,
+            "tp": 2,
+            "fp": 60,
+            "fn": 0,
+            "tn": 208,
+            "auc": 0.8190298507462686,
+            "base_rate": 0.007407407407407408,
+            "fn_rate": 0.0,
+            "fp_rate": 0.22388059701492538,
+            "precision": 0.03225806451612903,
+            "tn_fp_ratio": 3.466666666666667
+          },
+          "version": "2026-01-12_cpi_10y_rf_shallow_w15_20bp",
+          "created_at": "2026-01-13T00:03:50.493765Z",
+          "created_by": "build_graph.py",
+          "notes": "n_test_pos=2",
+          "model_params": {
+            "weight": 15
+          },
+          "feature_medians": {
+            "cpi_shock_abs": 0.20000000000000284,
+            "yield_vol_10y": 0.04253725758142482,
+            "slope_10y_2y": 1.4499999999999993,
+            "fed_funds": 4.55,
+            "expinf_1y": 2.8042649,
+            "y_10y_before": 5.94,
+            "stlfsi": -0.3093
+          }
+        },
+        "CPI->YIELD_10Y__fn_5pct__cpi_10y_rf_shallow_w15_20bp": {
+          "edge_id": "CPI->YIELD_10Y__fn_5pct__cpi_10y_rf_shallow_w15_20bp",
+          "slot_id": "CPI->YIELD_10Y",
+          "from_node": {
+            "type": "event",
+            "name": "CPI",
+            "description": "Consumer Price Index release"
+          },
+          "to_node": {
+            "type": "instrument",
+            "name": "YIELD_10Y",
+            "description": "10-Year Treasury yield"
+          },
+          "model_type": "RF_shallow",
+          "model_location": "/home/bitzaven/CodingProjects/ExamplesFixedIncomeModelling/registry/models/models/cpi_10y_rf_shallow_w15_20bp/model.pkl",
+          "active_factor": "cpi_shock_abs",
+          "background_features": [
+            "yield_vol_10y",
+            "slope_10y_2y",
+            "fed_funds",
+            "expinf_1y",
+            "y_10y_before",
+            "stlfsi"
+          ],
+          "target_series": "YIELD_10Y",
+          "target_unit": "bp",
+          "large_move_threshold": {
+            "value": 0.2,
+            "definition": "abs(y_change) >= 0.2"
+          },
+          "fn_constraint": 0.05,
+          "prob_cutoff": 0.15,
+          "threshold_selection_method": "manual promotion from grid_search_2026-01-12",
+          "stats": {
+            "train_period": [
+              "1972-07-21",
+              "2003-01-16"
+            ],
+            "test_period": [
+              "2003-02-21",
+              "2025-10-24"
+            ],
+            "n_test_events": 270,
+            "n_test_pos": 2,
+            "n_test_neg": 268,
+            "tp": 2,
+            "fp": 60,
+            "fn": 0,
+            "tn": 208,
+            "auc": 0.8190298507462686,
+            "base_rate": 0.007407407407407408,
+            "fn_rate": 0.0,
+            "fp_rate": 0.22388059701492538,
+            "precision": 0.03225806451612903,
+            "tn_fp_ratio": 3.466666666666667
+          },
+          "version": "2026-01-12_cpi_10y_rf_shallow_w15_20bp",
+          "created_at": "2026-01-13T00:03:50.493905Z",
+          "created_by": "build_graph.py",
+          "notes": "n_test_pos=2",
+          "model_params": {
+            "weight": 15
+          },
+          "feature_medians": {
+            "cpi_shock_abs": 0.20000000000000284,
+            "yield_vol_10y": 0.04253725758142482,
+            "slope_10y_2y": 1.4499999999999993,
+            "fed_funds": 4.55,
+            "expinf_1y": 2.8042649,
+            "y_10y_before": 5.94,
+            "stlfsi": -0.3093
+          }
+        }
+      },
+      "default_edge_id": "CPI->YIELD_10Y__fn_5pct__cpi_10y_rf_shallow_w15_20bp"
+    },
+    "CPI_PREDICTED->YIELD_10Y": {
+      "slot_id": "CPI_PREDICTED->YIELD_10Y",
+      "from_node": {
+        "type": "event",
+        "name": "CPI_PREDICTED",
+        "description": "St. Louis Fed expected 1-year inflation"
+      },
+      "to_node": {
+        "type": "instrument",
+        "name": "YIELD_10Y",
+        "description": "10-Year Treasury yield"
+      },
+      "description": "Inflation expectation update \u2192 large 10Y move probability",
+      "feature_spec": {
+        "active_factor": "expinf_change",
+        "background_features": [
+          "yield_vol_10y",
+          "slope_10y_2y",
+          "fed_funds",
+          "expinf_1y",
+          "y_10y_before",
+          "stlfsi"
+        ]
+      },
+      "edges": {
+        "CPI_PREDICTED->YIELD_10Y__fn_1pct__cpi_predicted_10y_logreg_balanced_15bp": {
+          "edge_id": "CPI_PREDICTED->YIELD_10Y__fn_1pct__cpi_predicted_10y_logreg_balanced_15bp",
+          "slot_id": "CPI_PREDICTED->YIELD_10Y",
+          "from_node": {
+            "type": "event",
+            "name": "CPI_PREDICTED",
+            "description": "St. Louis Fed expected 1-year inflation"
+          },
+          "to_node": {
+            "type": "instrument",
+            "name": "YIELD_10Y",
+            "description": "10-Year Treasury yield"
+          },
+          "model_type": "LogReg",
+          "model_location": "/home/bitzaven/CodingProjects/ExamplesFixedIncomeModelling/registry/models/models/cpi_predicted_10y_logreg_balanced_15bp/model.pkl",
+          "active_factor": "expinf_change",
+          "background_features": [
+            "yield_vol_10y",
+            "slope_10y_2y",
+            "fed_funds",
+            "expinf_1y",
+            "y_10y_before",
+            "stlfsi"
+          ],
+          "target_series": "YIELD_10Y",
+          "target_unit": "bp",
+          "large_move_threshold": {
+            "value": 0.15,
+            "definition": "abs(y_change) >= 0.15"
+          },
+          "fn_constraint": 0.01,
+          "prob_cutoff": 0.4,
+          "threshold_selection_method": "manual promotion from grid_search_2026-01-12",
+          "stats": {
+            "train_period": [
+              "1982-01-22",
+              "2006-05-17"
+            ],
+            "test_period": [
+              "2006-06-14",
+              "2025-10-24"
+            ],
+            "n_test_events": 232,
+            "n_test_pos": 5,
+            "n_test_neg": 227,
+            "tp": 5,
+            "fp": 62,
+            "fn": 0,
+            "tn": 165,
+            "auc": 0.8942731277533039,
+            "base_rate": 0.021551724137931036,
+            "fn_rate": 0.0,
+            "fp_rate": 0.27312775330396477,
+            "precision": 0.07462686567164178,
+            "tn_fp_ratio": 2.661290322580645
+          },
+          "version": "2026-01-12_cpi_predicted_10y_logreg_balanced_15bp",
+          "created_at": "2026-01-13T00:03:50.494051Z",
+          "created_by": "build_graph.py",
+          "notes": "n_test_pos=5",
+          "model_params": {
+            "weight": "balanced"
+          },
+          "feature_medians": {
+            "expinf_change": 0.0,
+            "yield_vol_10y": 0.04253725758142482,
+            "slope_10y_2y": 1.4499999999999993,
+            "fed_funds": 3.25,
+            "expinf_1y": 2.8042649,
+            "y_10y_before": 5.89,
+            "stlfsi": -0.3093
+          }
+        },
+        "CPI_PREDICTED->YIELD_10Y__fn_5pct__cpi_predicted_10y_logreg_balanced_15bp": {
+          "edge_id": "CPI_PREDICTED->YIELD_10Y__fn_5pct__cpi_predicted_10y_logreg_balanced_15bp",
+          "slot_id": "CPI_PREDICTED->YIELD_10Y",
+          "from_node": {
+            "type": "event",
+            "name": "CPI_PREDICTED",
+            "description": "St. Louis Fed expected 1-year inflation"
+          },
+          "to_node": {
+            "type": "instrument",
+            "name": "YIELD_10Y",
+            "description": "10-Year Treasury yield"
+          },
+          "model_type": "LogReg",
+          "model_location": "/home/bitzaven/CodingProjects/ExamplesFixedIncomeModelling/registry/models/models/cpi_predicted_10y_logreg_balanced_15bp/model.pkl",
+          "active_factor": "expinf_change",
+          "background_features": [
+            "yield_vol_10y",
+            "slope_10y_2y",
+            "fed_funds",
+            "expinf_1y",
+            "y_10y_before",
+            "stlfsi"
+          ],
+          "target_series": "YIELD_10Y",
+          "target_unit": "bp",
+          "large_move_threshold": {
+            "value": 0.15,
+            "definition": "abs(y_change) >= 0.15"
+          },
+          "fn_constraint": 0.05,
+          "prob_cutoff": 0.4,
+          "threshold_selection_method": "manual promotion from grid_search_2026-01-12",
+          "stats": {
+            "train_period": [
+              "1982-01-22",
+              "2006-05-17"
+            ],
+            "test_period": [
+              "2006-06-14",
+              "2025-10-24"
+            ],
+            "n_test_events": 232,
+            "n_test_pos": 5,
+            "n_test_neg": 227,
+            "tp": 5,
+            "fp": 62,
+            "fn": 0,
+            "tn": 165,
+            "auc": 0.8942731277533039,
+            "base_rate": 0.021551724137931036,
+            "fn_rate": 0.0,
+            "fp_rate": 0.27312775330396477,
+            "precision": 0.07462686567164178,
+            "tn_fp_ratio": 2.661290322580645
+          },
+          "version": "2026-01-12_cpi_predicted_10y_logreg_balanced_15bp",
+          "created_at": "2026-01-13T00:03:50.494170Z",
+          "created_by": "build_graph.py",
+          "notes": "n_test_pos=5",
+          "model_params": {
+            "weight": "balanced"
+          },
+          "feature_medians": {
+            "expinf_change": 0.0,
+            "yield_vol_10y": 0.04253725758142482,
+            "slope_10y_2y": 1.4499999999999993,
+            "fed_funds": 3.25,
+            "expinf_1y": 2.8042649,
+            "y_10y_before": 5.89,
+            "stlfsi": -0.3093
+          }
+        }
+      },
+      "default_edge_id": "CPI_PREDICTED->YIELD_10Y__fn_5pct__cpi_predicted_10y_logreg_balanced_15bp"
     },
     "UNEMP->VIX": {
       "slot_id": "UNEMP->VIX",
@@ -290,8 +643,8 @@
             "precision": 0.05063291139240506,
             "tn_fp_ratio": 0.6533333333333333
           },
-          "version": "2025-12-05_unemp_vix_extratrees_w20_3p5pt",
-          "created_at": "2025-12-05T22:18:23.030973Z",
+          "version": "2026-01-12_unemp_vix_extratrees_w20_3p5pt",
+          "created_at": "2026-01-13T00:03:50.494337Z",
           "created_by": "build_graph.py",
           "notes": "n_test_pos=4",
           "model_params": {
@@ -363,8 +716,8 @@
             "precision": 0.3373493975903614,
             "tn_fp_ratio": 0.8
           },
-          "version": "2025-12-05_unemp_vix_rf_shallow_w50_1p5pt",
-          "created_at": "2025-12-05T22:18:23.031101Z",
+          "version": "2026-01-12_unemp_vix_rf_shallow_w50_1p5pt",
+          "created_at": "2026-01-13T00:03:50.494446Z",
           "created_by": "build_graph.py",
           "notes": "n_test_pos=29",
           "model_params": {
@@ -382,105 +735,7 @@
         }
       },
       "default_edge_id": "UNEMP->VIX__fn_5pct__unemp_vix_rf_shallow_w50_1p5pt"
-    },
-    "CPI->YIELD_2Y": {
-      "slot_id": "CPI->YIELD_2Y",
-      "from_node": {
-        "type": "event",
-        "name": "CPI",
-        "description": "Consumer Price Index release"
-      },
-      "to_node": {
-        "type": "instrument",
-        "name": "YIELD_2Y",
-        "description": "2-Year Treasury yield"
-      },
-      "description": "CPI announcement \u2192 large 2Y yield move probability",
-      "feature_spec": {
-        "active_factor": "cpi_shock_mom",
-        "background_features": [
-          "yield_volatility",
-          "cpi_abs",
-          "fed_funds",
-          "slope_10y_2y",
-          "unemployment"
-        ]
-      },
-      "edges": {
-        "CPI->YIELD_2Y__fn_1pct__cpi_2y_rf_shallow_w20_6p3bp": {
-          "edge_id": "CPI->YIELD_2Y__fn_1pct__cpi_2y_rf_shallow_w20_6p3bp",
-          "slot_id": "CPI->YIELD_2Y",
-          "from_node": {
-            "type": "event",
-            "name": "CPI",
-            "description": "Consumer Price Index release"
-          },
-          "to_node": {
-            "type": "instrument",
-            "name": "YIELD_2Y",
-            "description": "2-Year Treasury yield"
-          },
-          "model_type": "RF_shallow",
-          "model_location": "/home/bitzaven/CodingProjects/ExamplesFixedIncomeModelling/registry/models/models/cpi_2y_rf_shallow_w20_6p3bp/model.pkl",
-          "active_factor": "cpi_shock_mom",
-          "background_features": [
-            "yield_volatility",
-            "cpi_abs",
-            "fed_funds",
-            "slope_10y_2y",
-            "unemployment"
-          ],
-          "target_series": "YIELD_2Y",
-          "target_unit": "pp",
-          "large_move_threshold": {
-            "value": 0.06316673330384756,
-            "definition": "abs(yield_2y_change) >= 0.063 pp"
-          },
-          "fn_constraint": 0.01,
-          "prob_cutoff": 0.15,
-          "threshold_selection_method": "migrated from multi_target_results grid search",
-          "stats": {
-            "train_period": [
-              "1976-06-22",
-              "2003-11-18"
-            ],
-            "test_period": [
-              "2003-12-16",
-              "2025-10-24"
-            ],
-            "n_test_events": 263,
-            "n_test_pos": 31,
-            "n_test_neg": 232,
-            "tp": 31,
-            "fp": 182,
-            "fn": 0,
-            "tn": 50,
-            "auc": 0.85,
-            "base_rate": 0.11787072243346007,
-            "fn_rate": 0.0,
-            "fp_rate": 0.7844827586206896,
-            "precision": 0.14553990610328638,
-            "tn_fp_ratio": 0.27472527472527475
-          },
-          "version": "2025-12-06_cpi_2y_rf_shallow_w20_6p3bp",
-          "created_at": "2025-12-06T20:09:51.045177Z",
-          "created_by": "migration from multi_target_results.pkl",
-          "notes": "Migrated model, n_test_pos=31",
-          "model_params": {
-            "weight": 20
-          },
-          "feature_medians": {
-            "yield_volatility": 0.03891890852070766,
-            "cpi_shock_mom": 0.2509414239115387,
-            "cpi_abs": 0.2663412206118731,
-            "fed_funds": 3.25,
-            "slope_10y_2y": 1.5,
-            "unemployment": 6.6
-          }
-        }
-      },
-      "default_edge_id": "CPI->YIELD_2Y__fn_1pct__cpi_2y_rf_shallow_w20_6p3bp"
     }
   },
-  "created_at": "2025-12-05T22:18:23.030012Z"
+  "created_at": "2026-01-13T00:03:50.493148Z"
 }

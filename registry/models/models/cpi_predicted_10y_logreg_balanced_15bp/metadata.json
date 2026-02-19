@@ -1,0 +1,55 @@
+{
+  "model_id": "cpi_predicted_10y_logreg_balanced_15bp",
+  "model_type": "LogReg",
+  "weight": "balanced",
+  "features": [
+    "expinf_change",
+    "yield_vol_10y",
+    "slope_10y_2y",
+    "fed_funds",
+    "expinf_1y",
+    "y_10y_before",
+    "stlfsi"
+  ],
+  "feature_medians": {
+    "expinf_change": 0.0,
+    "yield_vol_10y": 0.04253725758142482,
+    "slope_10y_2y": 1.4499999999999993,
+    "fed_funds": 3.25,
+    "expinf_1y": 2.8042649,
+    "y_10y_before": 5.89,
+    "stlfsi": -0.3093
+  },
+  "target_event": "CPI_PREDICTED",
+  "target_instrument": "YIELD_10Y",
+  "target_col": "y_change",
+  "large_move_threshold": 0.15,
+  "large_move_definition": "abs(y_change) >= 0.15",
+  "prob_cutoff": 0.4,
+  "train_period": [
+    "1982-01-22",
+    "2006-05-17"
+  ],
+  "test_period": [
+    "2006-06-14",
+    "2025-10-24"
+  ],
+  "n_train": 542,
+  "n_test": 232,
+  "n_test_pos": 5,
+  "n_test_neg": 227,
+  "tp": 5,
+  "fp": 62,
+  "fn": 0,
+  "tn": 165,
+  "auc": 0.8942731277533039,
+  "fn_rate": 0.0,
+  "fp_rate": 0.27312775330396477,
+  "tn_fp_ratio": 2.661290322580645,
+  "created_at": "2026-01-13T00:03:18.615277Z",
+  "created_by": "promote_model.py",
+  "source": "grid_search_2026-01-12",
+  "notes": "n_test_pos=5",
+  "model_file": "model.pkl",
+  "scaler_file": "scaler.pkl"
+}
